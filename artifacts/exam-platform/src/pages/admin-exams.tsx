@@ -31,7 +31,7 @@ export default function AdminExams() {
         toast({ title: 'Exam deleted' });
         queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({ limit: 100 }) });
       },
-      onError: (err) => toast({ title: 'Error', description: err.error, variant: 'destructive' })
+      onError: (err) => toast({ title: 'Error', description: (err.data as { error?: string })?.error, variant: 'destructive' })
     });
   };
 

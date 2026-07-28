@@ -3,7 +3,11 @@ import { createHmac } from "crypto";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const JWT_SECRET = process.env.SESSION_SECRET || "exam-platform-secret";
+const _jwtSecret = process.env.SESSION_SECRET;
+if (!_jwtSecret) {
+  throw new Error("SESSION_SECRET environment variable is required but not set");
+}
+const JWT_SECRET: string = _jwtSecret;
 
 // Minimal JWT implementation (no external deps)
 export function signToken(payload: Record<string, unknown>): string {

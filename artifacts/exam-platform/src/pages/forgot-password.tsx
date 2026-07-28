@@ -33,7 +33,7 @@ export default function ForgotPassword() {
       onError: (err) => {
         toast({
           title: 'Request failed',
-          description: err.error || 'Something went wrong',
+          description: (err.data as { error?: string })?.error || 'Something went wrong',
           variant: 'destructive',
         });
       }

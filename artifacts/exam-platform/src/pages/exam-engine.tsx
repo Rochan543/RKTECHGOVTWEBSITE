@@ -215,7 +215,7 @@ export default function ExamEngine() {
         setLocation(`/results`);
       },
       onError: (err) => {
-        toast({ title: 'Error submitting exam', description: err.error, variant: 'destructive' });
+        toast({ title: 'Error submitting exam', description: (err.data as { error?: string })?.error, variant: 'destructive' });
       }
     });
   };

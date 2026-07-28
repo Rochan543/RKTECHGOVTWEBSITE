@@ -1,0 +1,735 @@
+THIS IS NOT A NEW PROJECT.
+
+DO NOT REGENERATE THE APPLICATION.
+DO NOT RESTART THE PROJECT.
+DO NOT CHANGE THE EXISTING ARCHITECTURE.
+DO NOT OVERWRITE WORKING CODE.
+DO NOT REMOVE EXISTING FEATURES.
+
+Your job is to CONTINUE FROM THE CURRENT CODEBASE and COMPLETE THE ENTIRE PLATFORM.
+
+==========================================================
+PRIMARY OBJECTIVE
+==========================================================
+
+Scan the ENTIRE repository first.
+
+Inspect:
+
+- Frontend
+- Backend
+- Database
+- Routes
+- APIs
+- Components
+- Services
+- Repositories
+- Controllers
+- Middleware
+- Validators
+- Authentication
+- Authorization
+- Admin Portal
+- Student Portal
+- Super Admin Portal
+- Exam Engine
+- Analytics
+- Notes
+- Question Bank
+- PDF System
+- Reports
+- Notifications
+- Settings
+- Documentation
+
+Create an internal checklist.
+
+DO NOT regenerate completed work.
+
+Only build missing or incomplete modules.
+
+==========================================================
+TECH STACK
+==========================================================
+
+Frontend
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- ShadCN UI
+- React Router
+- TanStack Query
+- React Hook Form
+- Zod
+- Framer Motion
+
+Backend
+
+- Node.js
+- Express
+- PostgreSQL
+- Prisma / Drizzle ORM
+- Redis
+- BullMQ
+
+Authentication
+
+- JWT
+- HTTP-only Secure Cookies
+- bcrypt
+
+Storage
+
+- AWS S3
+- Cloudinary
+
+Deployment
+
+- Docker
+- Docker Compose
+- GitHub Actions
+- Nginx
+
+==========================================================
+ARCHITECTURE
+==========================================================
+
+Follow Clean Architecture.
+
+Presentation
+
+Controllers
+
+Services
+
+Repositories
+
+DTOs
+
+Validators
+
+Middleware
+
+Utilities
+
+Database Layer
+
+No business logic inside React components.
+
+No business logic inside Express routes.
+
+Business logic belongs only in Services.
+
+Database access belongs only in Repositories.
+
+==========================================================
+AUTHENTICATION
+==========================================================
+
+Complete authentication.
+
+Login
+
+Register
+
+Forgot Password
+
+Reset Password
+
+Email Verification
+
+Refresh Token
+
+Logout
+
+Profile
+
+Role Based Access
+
+Student
+
+Admin
+
+Super Admin
+
+JWT
+
+HTTP-only Cookies
+
+bcrypt
+
+Session Management
+
+Rate Limiting
+
+Audit Logs
+
+==========================================================
+COMPLETE STUDENT PORTAL
+==========================================================
+
+Dashboard
+
+Upcoming Exams
+
+Upcoming Quizzes
+
+Practice
+
+Mock Tests
+
+Sectional Tests
+
+Previous Year Papers
+
+Bookmarks
+
+Wrong Answers
+
+Study Planner
+
+Revision Planner
+
+Daily GK
+
+Daily Current Affairs
+
+Daily GS News
+
+Performance
+
+Achievements
+
+Leaderboard
+
+Certificates
+
+Downloads
+
+Notifications
+
+Notes
+
+PDF Reader
+
+Profile
+
+Settings
+
+Dark Mode
+
+==========================================================
+COMPLETE EXAM ENGINE
+==========================================================
+
+Professional Exam Interface.
+
+Question Palette
+
+Question Navigation
+
+Question Status
+
+Answered
+
+Not Answered
+
+Marked
+
+Visited
+
+Overall Timer
+
+Section Timer
+
+Question Timer
+
+Auto Save
+
+Resume Exam
+
+Auto Submit
+
+Review Screen
+
+MathJax
+
+Rich Text
+
+Image Questions
+
+Tables
+
+Keyboard Navigation
+
+Fullscreen
+
+Random Questions
+
+Random Options
+
+Question Watermark
+
+Violation Detection
+
+Analytics Tracking
+
+==========================================================
+RESULTS
+==========================================================
+
+Professional Result Page
+
+Overall Score
+
+Correct
+
+Wrong
+
+Skipped
+
+Accuracy
+
+Percentile
+
+Rank
+
+Leaderboard
+
+Time Analysis
+
+Topic Analysis
+
+Subject Analysis
+
+Difficulty Analysis
+
+Question Review
+
+Download PDF
+
+==========================================================
+ANALYTICS
+==========================================================
+
+Student Analytics
+
+Admin Analytics
+
+Weekly
+
+Monthly
+
+Yearly
+
+Charts
+
+Heatmaps
+
+Progress
+
+Weak Topics
+
+Strong Topics
+
+Accuracy
+
+Speed
+
+Comparison
+
+==========================================================
+QUESTION BANK
+==========================================================
+
+Question Editor
+
+Rich Text
+
+Math Formula
+
+Image Upload
+
+CSV
+
+Excel
+
+JSON
+
+Markdown
+
+PDF Import
+
+OCR Import
+
+Bulk Upload
+
+Version History
+
+Question Preview
+
+Difficulty
+
+Marks
+
+Negative Marks
+
+Hints
+
+Explanation
+
+==========================================================
+NOTES
+==========================================================
+
+Upload
+
+PDF
+
+DOCX
+
+PPTX
+
+ZIP
+
+Images
+
+Markdown
+
+Reader
+
+Search
+
+Highlight
+
+Bookmark
+
+Zoom
+
+Fullscreen
+
+Download
+
+Reading Progress
+
+==========================================================
+ADMIN PORTAL
+==========================================================
+
+Dashboard
+
+Students
+
+Questions
+
+Subjects
+
+Topics
+
+Question Bank
+
+Daily Quiz
+
+Mock Tests
+
+Sectional Tests
+
+Current Affairs
+
+Notes
+
+PDF Upload
+
+OCR
+
+Reports
+
+Analytics
+
+Notifications
+
+Support Tickets
+
+Audit Logs
+
+Settings
+
+==========================================================
+SUPER ADMIN
+==========================================================
+
+Dashboard
+
+Admin Management
+
+Role Management
+
+Permission Management
+
+System Settings
+
+Feature Flags
+
+Audit Logs
+
+Global Analytics
+
+System Health
+
+Backup
+
+Restore
+
+==========================================================
+SECURITY
+==========================================================
+
+Helmet
+
+Rate Limiting
+
+CORS
+
+Input Validation
+
+Zod
+
+SQL Injection Protection
+
+XSS Protection
+
+CSRF where appropriate
+
+Audit Logs
+
+RBAC
+
+Ownership Validation
+
+Server-side Timer Validation
+
+Server-side Exam Validation
+
+Detect:
+
+Tab Switch
+
+Window Blur
+
+Fullscreen Exit
+
+Record Violations
+
+Auto Submit after configurable violation threshold
+
+==========================================================
+DATABASE
+==========================================================
+
+Review schema.
+
+Create missing tables.
+
+Indexes
+
+Constraints
+
+Foreign Keys
+
+Seed Data
+
+Migration Validation
+
+Performance Optimization
+
+==========================================================
+API
+==========================================================
+
+Every endpoint under
+
+/api/v1
+
+Validation
+
+Authorization
+
+Pagination
+
+Searching
+
+Filtering
+
+Sorting
+
+Logging
+
+Error Handling
+
+Swagger
+
+OpenAPI
+
+==========================================================
+UI
+==========================================================
+
+Professional Design
+
+Responsive
+
+Dark Mode
+
+Light Mode
+
+Glass Cards
+
+Smooth Animations
+
+Loading Skeletons
+
+404
+
+403
+
+500
+
+Accessibility
+
+==========================================================
+PERFORMANCE
+==========================================================
+
+Lazy Loading
+
+Code Splitting
+
+Redis Cache
+
+React Query Cache
+
+Memoization
+
+Pagination
+
+Infinite Scroll
+
+Compression
+
+Image Optimization
+
+Virtual Lists
+
+==========================================================
+TESTING
+==========================================================
+
+Unit Tests
+
+Integration Tests
+
+API Tests
+
+Component Tests
+
+==========================================================
+DOCUMENTATION
+==========================================================
+
+README
+
+Architecture
+
+ER Diagram
+
+API Docs
+
+Deployment Guide
+
+Developer Guide
+
+Environment Variables
+
+==========================================================
+QUALITY
+==========================================================
+
+No TODOs
+
+No placeholders
+
+No fake implementations
+
+No duplicate code
+
+No dead code
+
+No console.log in production
+
+Reusable components
+
+Reusable hooks
+
+Reusable services
+
+SOLID principles
+
+==========================================================
+VALIDATION
+==========================================================
+
+After every completed module:
+
+Run:
+
+pnpm typecheck
+
+Fix all TypeScript errors.
+
+Run:
+
+pnpm lint
+
+Fix lint issues.
+
+Run:
+
+pnpm build
+
+Verify:
+
+Frontend
+
+Backend
+
+Database
+
+APIs
+
+Authentication
+
+Authorization
+
+==========================================================
+CONTINUATION POLICY
+==========================================================
+
+Do NOT stop after one feature.
+
+Do NOT ask for confirmation after every module.
+
+Continue implementing automatically until every incomplete module has been completed.
+
+If blocked only by an external limitation (quota, runtime, permissions, missing credentials, or platform restrictions):
+
+1. Save all progress.
+2. Commit all completed changes.
+3. Generate a detailed progress report.
+4. List completed modules.
+5. List remaining modules.
+6. Specify the exact next implementation step.
+7. Ensure the next session resumes from the last checkpoint without rebuilding completed work.
+
+The goal is a fully production-ready SSC Online Examination Platform with Student, Admin, and Super Admin portals, complete backend APIs, secure authentication, analytics, exam engine, question bank, notes system, reporting, testing, documentation, and deployment readiness.

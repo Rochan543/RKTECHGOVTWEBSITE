@@ -5,3 +5,4 @@ export * from "./questions";
 export * from "./exams";
 export * from "./sessions";
 export * from "./content";
+export { bookmarksTable } from "./content";

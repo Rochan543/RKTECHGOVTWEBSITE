@@ -1,0 +1,1323 @@
+
+# 🚀 CONTINUATION PROMPT – COMPLETE THE REMAINING SSC PLATFORM (DO NOT RESTART)
+
+
+
+You are continuing an existing production-grade project. **Do NOT regenerate, overwrite, or recreate anything that already exists.**
+
+
+
+## Existing Work
+
+
+
+The following has already been completed:
+
+
+
+* Project initialized
+
+* React + TypeScript + Vite frontend
+
+* Node.js + Express backend
+
+* PostgreSQL + Prisma
+
+* OpenAPI specification
+
+* Orval code generation
+
+* Database schema
+
+* Initial API routes
+
+* Seed data
+
+* Session handling
+
+* User module
+
+* Subject module
+
+* Question module
+
+* Exam module
+
+* Content module
+
+
+
+Do **NOT** recreate any of these.
+
+
+
+Instead, inspect the existing codebase and continue building from the current state.
+
+
+
+---
+
+
+
+# PRIMARY GOAL
+
+
+
+Finish **every remaining feature** until the application is completely production-ready.
+
+
+
+No placeholders.
+
+
+
+No TODOs.
+
+
+
+No demo code.
+
+
+
+Everything should be fully functional.
+
+
+
+---
+
+
+
+# FIRST TASK
+
+
+
+Before writing code:
+
+
+
+1. Scan the entire project.
+
+2. Detect every incomplete feature.
+
+3. Detect empty pages.
+
+4. Detect missing APIs.
+
+5. Detect missing database tables.
+
+6. Detect missing UI.
+
+7. Detect missing services.
+
+8. Detect missing validations.
+
+9. Detect missing analytics.
+
+10. Detect missing security.
+
+
+
+Generate an internal checklist.
+
+
+
+Then complete every item.
+
+
+
+---
+
+
+
+# DO NOT MODIFY
+
+
+
+Do NOT break existing code.
+
+
+
+Do NOT rename working APIs.
+
+
+
+Do NOT change the database schema unless required.
+
+
+
+Do NOT remove existing functionality.
+
+
+
+Only extend.
+
+
+
+---
+
+
+
+# COMPLETE STUDENT PORTAL
+
+
+
+Finish every remaining page.
+
+
+
+Dashboard
+
+
+
+Upcoming Tests
+
+
+
+Upcoming Quizzes
+
+
+
+Daily GK
+
+
+
+Daily Current Affairs
+
+
+
+Latest News
+
+
+
+Study Planner
+
+
+
+Revision Planner
+
+
+
+Notifications
+
+
+
+Leaderboard
+
+
+
+Profile
+
+
+
+Settings
+
+
+
+Wrong Answers
+
+
+
+Bookmarks
+
+
+
+Notes
+
+
+
+PDF Viewer
+
+
+
+Performance
+
+
+
+Rank
+
+
+
+Achievements
+
+
+
+Certificates
+
+
+
+Downloads
+
+
+
+PYQs
+
+
+
+Mock Tests
+
+
+
+Sectional Tests
+
+
+
+Topic Tests
+
+
+
+---
+
+
+
+# COMPLETE EXAM ENGINE
+
+
+
+Finish everything.
+
+
+
+Professional interface
+
+
+
+Question Palette
+
+
+
+Question Status
+
+
+
+Question Timer
+
+
+
+Overall Timer
+
+
+
+Section Timer
+
+
+
+Section Lock
+
+
+
+Question Navigation
+
+
+
+Review Screen
+
+
+
+Auto Save
+
+
+
+Resume Exam
+
+
+
+Autosubmit
+
+
+
+Random Questions
+
+
+
+Random Options
+
+
+
+Math Rendering
+
+
+
+Image Questions
+
+
+
+Rich Text
+
+
+
+Tables
+
+
+
+Dark Mode
+
+
+
+Keyboard Navigation
+
+
+
+Fullscreen Mode
+
+
+
+Violation Detection
+
+
+
+Question Watermark
+
+
+
+Time Tracking
+
+
+
+Per Question Analytics
+
+
+
+---
+
+
+
+# COMPLETE RESULTS
+
+
+
+Result Summary
+
+
+
+Detailed Analysis
+
+
+
+Correct
+
+
+
+Wrong
+
+
+
+Skipped
+
+
+
+Topic Analysis
+
+
+
+Subject Analysis
+
+
+
+Difficulty Analysis
+
+
+
+Speed Analysis
+
+
+
+Time Analysis
+
+
+
+Accuracy
+
+
+
+Percentile
+
+
+
+Leaderboard
+
+
+
+Rank
+
+
+
+Download PDF
+
+
+
+Share Result
+
+
+
+---
+
+
+
+# COMPLETE ADMIN PORTAL
+
+
+
+Finish every page.
+
+
+
+Dashboard
+
+
+
+Students
+
+
+
+Questions
+
+
+
+Subjects
+
+
+
+Topics
+
+
+
+Question Bank
+
+
+
+Mock Tests
+
+
+
+Sectional Tests
+
+
+
+Daily Quiz
+
+
+
+PYQs
+
+
+
+PDF Upload
+
+
+
+Bulk Upload
+
+
+
+OCR Import
+
+
+
+Notes Upload
+
+
+
+Announcements
+
+
+
+Notifications
+
+
+
+Reports
+
+
+
+Analytics
+
+
+
+Settings
+
+
+
+Support
+
+
+
+Audit Logs
+
+
+
+Roles
+
+
+
+Permissions
+
+
+
+---
+
+
+
+# COMPLETE QUESTION MANAGEMENT
+
+
+
+Question Editor
+
+
+
+Rich Text
+
+
+
+Image Upload
+
+
+
+Math Formula
+
+
+
+Difficulty
+
+
+
+Negative Marks
+
+
+
+Positive Marks
+
+
+
+Tags
+
+
+
+Hints
+
+
+
+Explanation
+
+
+
+Topic Mapping
+
+
+
+Subject Mapping
+
+
+
+Bulk Import
+
+
+
+CSV Import
+
+
+
+JSON Import
+
+
+
+Excel Import
+
+
+
+PDF Import
+
+
+
+Version History
+
+
+
+Question Preview
+
+
+
+---
+
+
+
+# COMPLETE PDF SYSTEM
+
+
+
+Upload PDFs
+
+
+
+View PDFs
+
+
+
+Search PDFs
+
+
+
+Categorize PDFs
+
+
+
+Bookmark PDFs
+
+
+
+Track Downloads
+
+
+
+Built-in PDF Viewer
+
+
+
+Zoom
+
+
+
+Print
+
+
+
+Fullscreen
+
+
+
+Notes
+
+
+
+Highlights
+
+
+
+---
+
+
+
+# COMPLETE DAILY GK
+
+
+
+Current Affairs
+
+
+
+Daily Quiz
+
+
+
+Daily Notes
+
+
+
+Important Events
+
+
+
+Monthly PDF
+
+
+
+Category Filter
+
+
+
+Search
+
+
+
+Bookmark
+
+
+
+---
+
+
+
+# COMPLETE ANALYTICS
+
+
+
+Subject Analytics
+
+
+
+Topic Analytics
+
+
+
+Question Analytics
+
+
+
+Daily Analytics
+
+
+
+Weekly Analytics
+
+
+
+Monthly Analytics
+
+
+
+Yearly Analytics
+
+
+
+Study Hours
+
+
+
+Weak Areas
+
+
+
+Strong Areas
+
+
+
+Progress
+
+
+
+Charts
+
+
+
+Heatmaps
+
+
+
+Comparison
+
+
+
+---
+
+
+
+# COMPLETE LEADERBOARD
+
+
+
+Daily
+
+
+
+Weekly
+
+
+
+Monthly
+
+
+
+Overall
+
+
+
+Friends
+
+
+
+Institute
+
+
+
+State
+
+
+
+National
+
+
+
+---
+
+
+
+# COMPLETE SUPER ADMIN
+
+
+
+Dashboard
+
+
+
+Admin Management
+
+
+
+User Management
+
+
+
+Role Management
+
+
+
+Permission Management
+
+
+
+Subscriptions
+
+
+
+Payments
+
+
+
+Audit Logs
+
+
+
+Feature Flags
+
+
+
+Application Settings
+
+
+
+Global Analytics
+
+
+
+Backups
+
+
+
+Restore
+
+
+
+System Health
+
+
+
+---
+
+
+
+# COMPLETE SECURITY
+
+
+
+Use JWT in HTTP-only secure cookies.
+
+
+
+Never use localStorage.
+
+
+
+Never use sessionStorage.
+
+
+
+Use PostgreSQL as the source of truth.
+
+
+
+Redis only for cache and queues.
+
+
+
+Add:
+
+
+
+Helmet
+
+
+
+Rate Limiter
+
+
+
+CSRF Protection
+
+
+
+Input Validation
+
+
+
+SQL Injection Protection
+
+
+
+XSS Protection
+
+
+
+CORS
+
+
+
+Sanitization
+
+
+
+Logging
+
+
+
+Audit Trail
+
+
+
+---
+
+
+
+# COMPLETE DATABASE
+
+
+
+Check for missing tables.
+
+
+
+Missing indexes.
+
+
+
+Foreign keys.
+
+
+
+Constraints.
+
+
+
+Unique indexes.
+
+
+
+Cascade rules.
+
+
+
+Soft Deletes.
+
+
+
+Audit Tables.
+
+
+
+---
+
+
+
+# COMPLETE API
+
+
+
+Every endpoint
+
+
+
+Validation
+
+
+
+Authorization
+
+
+
+Pagination
+
+
+
+Filtering
+
+
+
+Sorting
+
+
+
+Searching
+
+
+
+Error Handling
+
+
+
+Versioning
+
+
+
+Swagger
+
+
+
+OpenAPI
+
+
+
+---
+
+
+
+# COMPLETE FRONTEND
+
+
+
+Professional animations
+
+
+
+Skeleton loaders
+
+
+
+Empty states
+
+
+
+Error pages
+
+
+
+404
+
+
+
+403
+
+
+
+500
+
+
+
+Responsive
+
+
+
+Accessibility
+
+
+
+Dark Theme
+
+
+
+Light Theme
+
+
+
+Keyboard Support
+
+
+
+---
+
+
+
+# PERFORMANCE
+
+
+
+Lazy Loading
+
+
+
+Virtual Lists
+
+
+
+Code Splitting
+
+
+
+React Query Caching
+
+
+
+Redis Caching
+
+
+
+Image Optimization
+
+
+
+Memoization
+
+
+
+Compression
+
+
+
+---
+
+
+
+# TESTING
+
+
+
+Unit Tests
+
+
+
+Integration Tests
+
+
+
+API Tests
+
+
+
+Component Tests
+
+
+
+---
+
+
+
+
+
+
+
+Environment Files
+
+
+ 
+
+
+
+---
+
+
+
+# DOCUMENTATION
+
+
+
+README
+
+
+
+Architecture Diagram
+
+
+
+Folder Structure
+
+
+
+Database ER Diagram
+
+
+
+API Documentation
+
+
+
+Environment Variables
+
+
+
+Deployment Steps
+
+
+
+---
+
+
+
+# IMPORTANT
+
+
+
+Never stop after completing one module.
+
+
+
+Automatically continue to the next unfinished module.
+
+
+
+Do not wait for confirmation.
+
+
+
+Continue until every feature is implemented.
+
+
+
+If any page is incomplete, finish it.
+
+
+
+If any API is missing, build it.
+
+
+
+If any UI component is missing, create it.
+
+
+
+If any database table is missing, create it.
+
+
+
+If any feature is partially implemented, complete it.
+
+
+
+Do not replace existing working code.
+
+
+
+Only extend and integrate with the current codebase.
+
+
+
+At the end, generate a final implementation report listing:
+
+
+
+* Completed modules
+
+* New APIs
+
+* New database tables
+
+* New UI pages
+
+* Remaining issues (if any)
+
+* Performance improvements
+
+* Security improvements
+
+* Testing coverage
+
+* Deployment readiness
+
+
+
+---
+
+
+
+### Additional instruction
+
+
+
+Before writing any code, first **scan the existing repository** and produce an internal implementation plan based on what is actually missing. Do **not** regenerate modules that already exist. Every new feature must integrate cleanly with the existing architecture, preserve coding standards, and maintain backward compatibility with all existing APIs and database schemas.

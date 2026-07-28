@@ -98,6 +98,16 @@ router.get("/v1/sessions/:id", requireAuth, async (req: AuthRequest, res): Promi
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const userId = req.userId!;
+  const [rawSession] = await db.select({ userId: testSessionsTable.userId }).from(testSessionsTable).where(eq(testSessionsTable.id, params.data.id));
+  if (!rawSession) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+  if (rawSession.userId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const session = await buildSessionDetail(params.data.id);
   if (!session) {
     res.status(404).json({ error: "Session not found" });
@@ -118,8 +128,19 @@ router.patch("/v1/sessions/:id/answer", requireAuth, async (req: AuthRequest, re
     return;
   }
 
-  const { questionId, selectedOptionId, status, timeSpentSeconds } = parsed.data;
+  const userId = req.userId!;
   const sessionId = params.data.id;
+  const [rawSession] = await db.select({ userId: testSessionsTable.userId }).from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
+  if (!rawSession) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+  if (rawSession.userId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const { questionId, selectedOptionId, status, timeSpentSeconds } = parsed.data;
 
   const existing = await db.select().from(sessionAnswersTable)
     .where(and(eq(sessionAnswersTable.sessionId, sessionId), eq(sessionAnswersTable.questionId, questionId)));
@@ -155,6 +176,10 @@ router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res
   const [session] = await db.select().from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
   if (!session) {
     res.status(404).json({ error: "Session not found" });
+    return;
+  }
+  if (session.userId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
   if (session.status !== "in_progress") {

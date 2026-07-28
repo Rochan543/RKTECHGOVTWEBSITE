@@ -5,12 +5,14 @@ import {
   timestamp,
   boolean,
   integer,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { subjectsTable } from "./subjects";
 import { examCategoriesTable } from "./exam-categories";
+import { questionsTable } from "./questions";
 
 export const notesTable = pgTable("notes", {
   id: serial("id").primaryKey(),
@@ -49,6 +51,23 @@ export const notificationsTable = pgTable("notifications", {
     .defaultNow(),
 });
 
+export const bookmarksTable = pgTable(
+  "bookmarks",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    questionId: integer("question_id")
+      .notNull()
+      .references(() => questionsTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique("unique_bookmark").on(t.userId, t.questionId)],
+);
+
 export const insertNoteSchema = createInsertSchema(notesTable).omit({
   id: true,
   createdAt: true,
@@ -61,3 +80,5 @@ export const insertNotificationSchema = createInsertSchema(
 ).omit({ id: true, createdAt: true });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notificationsTable.$inferSelect;
+
+export type Bookmark = typeof bookmarksTable.$inferSelect;

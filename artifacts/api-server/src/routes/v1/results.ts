@@ -65,6 +65,11 @@ router.get("/v1/results/:id", requireAuth, async (req: AuthRequest, res): Promis
     return;
   }
 
+  if (result.userId !== req.userId!) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
   const [exam] = await db.select({ title: examsTable.title }).from(examsTable).where(eq(examsTable.id, result.examId));
   const answers = await db.select().from(sessionAnswersTable).where(eq(sessionAnswersTable.sessionId, result.sessionId));
 

@@ -1,45 +1,52 @@
-# [Project name]
+# SSC Exam Platform
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A production-grade online examination platform for SSC, Banking, Railway, UPSC, and other competitive exams.
 
-## Run & Operate
+## Architecture
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+**Monorepo** managed with pnpm workspaces.
 
-## Stack
+| Package | Location | Description |
+|---------|----------|-------------|
+| `@workspace/exam-platform` | `artifacts/exam-platform/` | React 19 + Vite frontend |
+| `@workspace/api-server` | `artifacts/api-server/` | Express 5 API server |
+| `@workspace/db` | `lib/db/` | Drizzle ORM + PostgreSQL schema |
+| `@workspace/api-zod` | `lib/api-zod/` | Generated Zod validators |
+| `@workspace/api-client-react` | `lib/api-client-react/` | Generated React Query API client |
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+## Tech Stack
 
-## Where things live
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, wouter, Framer Motion
+- **Backend**: Node.js, Express 5, TypeScript, Pino logging
+- **Database**: PostgreSQL (Replit built-in), Drizzle ORM
+- **Auth**: JWT (custom HS256 via Node.js crypto), bcrypt, Bearer tokens stored in sessionStorage
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+## Running the Project
 
-## Architecture decisions
+Both workflows are managed by Replit:
+- **API Server**: `pnpm --filter @workspace/api-server run dev` → builds then starts on `$PORT`
+- **Frontend**: `pnpm --filter @workspace/exam-platform run dev` → Vite dev server on `$PORT`
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+### Schema changes
 
-## Product
+```bash
+cd lib/db && pnpm run push   # push schema to dev DB
+```
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+## Portals
 
-## User preferences
+- **Student Portal** — `/` (login → `/dashboard`)
+- **Admin Portal** — `/admin` (requires `admin` or `super_admin` role)
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+## Default Admin Account
 
-## Gotchas
+After seeding, an admin account is created:
+- **Email**: `admin@sscplatform.com`
+- **Password**: `Admin@123456`
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+## User Preferences
 
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Keep the existing pnpm monorepo structure — do not restructure or migrate
+- Use `zod` (not `zod/v4`) as the import for routes in `artifacts/api-server/` — esbuild can't resolve subpath exports
+- `customFetch` must be exported from `lib/api-client-react/src/index.ts` for frontend pages that use it directly
+- `DATABASE_URL` is runtime-managed by Replit — do not set it manually

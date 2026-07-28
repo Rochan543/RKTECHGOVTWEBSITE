@@ -1,0 +1,754 @@
+MASTER CONTINUATION PROMPT — COMPLETE THE ENTIRE SSC ONLINE EXAMINATION PLATFORM
+IMPORTANT
+
+This is NOT a new project.
+
+This project has already been partially implemented.
+
+You MUST NOT regenerate, restart, overwrite, or replace existing working code.
+
+Your job is to continue from the current codebase until the entire platform is production-ready.
+
+PRIMARY OBJECTIVE
+
+Build the remaining modules and complete the platform.
+
+Do NOT stop after implementing a single page.
+
+Do NOT ask for confirmation after every feature.
+
+Continue implementing module after module until every unfinished feature has been completed or you are prevented by an external limitation (quota, runtime, permissions, or missing credentials). If interrupted, save progress and provide the exact next checkpoint so implementation can resume seamlessly.
+
+BEFORE WRITING CODE
+
+First perform a complete repository scan.
+
+Inspect:
+
+Frontend
+Backend
+Database
+APIs
+Components
+Routes
+Middleware
+Services
+Repositories
+Controllers
+Validation
+Authentication
+Security
+Admin Portal
+Student Portal
+Super Admin Portal
+Exam Engine
+Analytics
+PDF System
+Question Bank
+Notes
+OCR
+Reports
+
+Create an internal implementation checklist.
+
+Do NOT regenerate completed modules.
+
+Only extend existing functionality.
+
+DO NOT MODIFY
+
+Do NOT break existing functionality.
+
+Do NOT rename working APIs.
+
+Do NOT change working database tables unless absolutely required.
+
+Do NOT remove completed pages.
+
+Do NOT replace architecture.
+
+Do NOT downgrade security.
+
+PROJECT ARCHITECTURE
+
+Follow Clean Architecture.
+
+Separate:
+
+Presentation Layer
+
+Controllers
+
+Services
+
+Repositories
+
+DTOs
+
+Validators
+
+Middleware
+
+Utilities
+
+Database Layer
+
+No business logic inside React components.
+
+No business logic inside Express route handlers.
+
+Business logic belongs only inside Services.
+
+Database access belongs only inside Repositories.
+
+TECHNOLOGY STACK
+
+Frontend
+
+React 19
+
+TypeScript
+
+Vite
+
+Tailwind CSS
+
+ShadCN UI
+
+React Router
+
+TanStack Query
+
+React Hook Form
+
+Zod
+
+Framer Motion
+
+Backend
+
+Node.js
+
+Express
+
+PostgreSQL
+
+Prisma ORM
+
+Redis
+
+BullMQ
+
+Authentication
+
+JWT
+
+HTTP-only Secure Cookies
+
+bcrypt
+
+Storage
+
+Cloudinary
+
+AWS S3
+
+Deployment
+
+Docker
+
+Docker Compose
+
+GitHub Actions
+
+Nginx
+
+DATABASE
+
+PostgreSQL is the single source of truth.
+
+Redis is only for:
+
+Caching
+
+Queues
+
+Rate limiting
+
+Never store authentication or exam state in Redis.
+
+Never use localStorage.
+
+Never use sessionStorage.
+
+COMPLETE STUDENT PORTAL
+
+Finish every remaining page.
+
+Dashboard
+
+Upcoming Tests
+
+Upcoming Quizzes
+
+My Exams
+
+Practice
+
+Daily GK
+
+Daily Current Affairs
+
+Daily GS News
+
+Revision Planner
+
+Study Planner
+
+Wrong Answers
+
+Bookmarks
+
+Performance
+
+Leaderboard
+
+Achievements
+
+Certificates
+
+Downloads
+
+Notes
+
+PDF Reader
+
+Notifications
+
+Profile
+
+Settings
+
+Dark Mode
+
+COMPLETE EXAM ENGINE
+
+Professional Examination Interface.
+
+Implement:
+
+Question Palette
+
+Question Navigation
+
+Question Status
+
+Answered
+
+Not Answered
+
+Marked
+
+Marked + Answered
+
+Visited
+
+Not Visited
+
+Section Timer
+
+Overall Timer
+
+Per Question Timer
+
+Auto Save
+
+Resume Exam
+
+Auto Submit
+
+Random Questions
+
+Random Options
+
+Fullscreen Support
+
+Review Screen
+
+Math Formula Rendering
+
+Rich Text
+
+Image Questions
+
+Tables
+
+Keyboard Navigation
+
+Violation Detection
+
+Question Watermark
+
+Analytics Tracking
+
+COMPLETE RESULTS
+
+Professional Result Page.
+
+Include:
+
+Score
+
+Correct
+
+Wrong
+
+Skipped
+
+Accuracy
+
+Speed
+
+Time Per Question
+
+Topic Analysis
+
+Subject Analysis
+
+Difficulty Analysis
+
+Question Review
+
+Leaderboard Position
+
+Rank
+
+Percentile
+
+Download Result PDF
+
+COMPLETE ANALYTICS
+
+Student Analytics
+
+Admin Analytics
+
+Subject Analytics
+
+Topic Analytics
+
+Question Analytics
+
+Time Analytics
+
+Weekly Analytics
+
+Monthly Analytics
+
+Yearly Analytics
+
+Charts
+
+Heatmaps
+
+Progress Tracking
+
+Weak Topics
+
+Strong Topics
+
+Comparison Charts
+
+COMPLETE QUESTION MANAGEMENT
+
+Question Editor
+
+Rich Text Editor
+
+Math Formula Editor
+
+Image Upload
+
+Difficulty
+
+Marks
+
+Negative Marks
+
+Explanation
+
+Hints
+
+Topic Mapping
+
+Subject Mapping
+
+Version History
+
+Question Preview
+
+Bulk Import
+
+CSV
+
+Excel
+
+JSON
+
+Markdown
+
+PDF Import
+
+OCR Import
+
+COMPLETE NOTES SYSTEM
+
+Upload
+
+PDF
+
+DOCX
+
+PPTX
+
+ZIP
+
+Images
+
+Markdown
+
+Students should:
+
+Read online
+
+Search
+
+Bookmark
+
+Highlight
+
+Zoom
+
+Fullscreen
+
+Download
+
+Track Reading Progress
+
+COMPLETE ADMIN PORTAL
+
+Dashboard
+
+Students
+
+Questions
+
+Subjects
+
+Topics
+
+Question Bank
+
+Mock Tests
+
+Sectional Tests
+
+Daily Quiz
+
+Current Affairs
+
+Daily GK
+
+Notes
+
+PDF Upload
+
+OCR Import
+
+Bulk Import
+
+Announcements
+
+Notifications
+
+Reports
+
+Analytics
+
+Support Tickets
+
+Audit Logs
+
+Settings
+
+COMPLETE SUPER ADMIN
+
+Dashboard
+
+Admin Management
+
+Role Management
+
+Permission Management
+
+Feature Flags
+
+Global Analytics
+
+Application Settings
+
+System Health
+
+Audit Logs
+
+Backup
+
+Restore
+
+Subscription Management
+
+SECURITY
+
+Implement production-grade security.
+
+Helmet
+
+Rate Limiting
+
+Input Validation
+
+Zod Validation
+
+SQL Injection Protection
+
+XSS Protection
+
+Secure Cookies
+
+JWT
+
+CORS
+
+CSRF protection where appropriate
+
+Audit Logs
+
+Authentication Middleware
+
+Authorization Middleware
+
+Role-Based Access Control
+
+Server-side timer validation
+
+Server-side exam validation
+
+Detect tab switch
+
+Detect window blur
+
+Detect fullscreen exit
+
+Record exam violations
+
+Auto-submit after configurable violation threshold
+
+Note: Browser security has limits. Do not claim to block screenshots or permanently disable DevTools. Detect and log what is realistically detectable.
+
+PERFORMANCE
+
+Lazy Loading
+
+Code Splitting
+
+Virtual Lists
+
+React Query Cache
+
+Redis Cache
+
+Memoization
+
+Image Optimization
+
+Compression
+
+Prefetching
+
+Pagination
+
+Infinite Scroll
+
+UI
+
+Modern Professional Design.
+
+Inspired by online exam platforms while remaining original.
+
+Rounded Cards
+
+Glass Effects
+
+Dark Mode
+
+Light Mode
+
+Professional Typography
+
+Responsive
+
+Animations
+
+Loading Skeletons
+
+Empty States
+
+404
+
+403
+
+500
+
+Accessibility
+
+API
+
+Version all APIs.
+
+Use
+
+/api/v1/
+
+Every endpoint must include
+
+Validation
+
+Authorization
+
+Pagination
+
+Filtering
+
+Searching
+
+Sorting
+
+Error Handling
+
+Logging
+
+Swagger
+
+OpenAPI
+
+TESTING
+
+Unit Tests
+
+Integration Tests
+
+API Tests
+
+Component Tests
+
+DOCUMENTATION
+
+README
+
+Folder Structure
+
+Architecture Diagram
+
+ER Diagram
+
+API Documentation
+
+Deployment Guide
+
+Environment Variables
+
+Developer Setup
+
+QUALITY REQUIREMENTS
+
+No TODOs.
+
+No placeholder pages.
+
+No placeholder APIs.
+
+No fake data unless explicitly used as seed data.
+
+No unfinished components.
+
+No duplicated code.
+
+No dead code.
+
+No commented-out legacy code.
+
+No console.log statements left in production code.
+
+Follow SOLID principles.
+
+Use reusable components.
+
+Use reusable hooks.
+
+Use reusable services.
+
+Keep code modular.
+
+VALIDATION AFTER EVERY MODULE
+
+After completing each module:
+
+Run TypeScript typecheck.
+
+Fix all TypeScript errors.
+
+Run lint.
+
+Fix lint issues.
+
+Verify imports.
+
+Verify routes.
+
+Verify database.
+
+Verify API.
+
+Verify frontend builds.
+
+Verify backend builds.
+
+Do not move to the next module until the current module passes validation.
+
+CONTINUATION POLICY
+
+Continue implementing automatically through the remaining modules.
+
+Do not stop after one feature.
+
+Do not wait for unnecessary confirmation.
+
+If interrupted by an external limit (quota, runtime, or permissions), save progress, summarize exactly what was completed, identify the next unfinished task, and make it easy to resume from that checkpoint without repeating completed work.
+
+FINAL DELIVERABLE
+
+When all modules are complete, produce a completion report containing:
+
+Completed Student Features
+Completed Admin Features
+Completed Super Admin Features
+Completed APIs
+Completed Database Tables
+Security Improvements
+Performance Improvements
+Testing Coverage
+Documentation Status
+Deployment Readiness
+Any remaining external blockers (if applicable)
+
+Build everything to production quality, ensuring scalability, maintainability, security, and a polished user experience throughout.

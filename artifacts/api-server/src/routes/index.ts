@@ -12,6 +12,9 @@ import leaderboardRouter from "./v1/leaderboard";
 import notificationsRouter from "./v1/notifications";
 import notesRouter from "./v1/notes";
 import usersRouter from "./v1/users";
+import bookmarksRouter from "./v1/bookmarks";
+import wrongAnswersRouter from "./v1/wrong-answers";
+import settingsRouter from "./v1/settings";
 
 const router: IRouter = Router();
 
@@ -28,5 +31,8 @@ router.use(leaderboardRouter);
 router.use(notificationsRouter);
 router.use(notesRouter);
 router.use(usersRouter);
+router.use(bookmarksRouter);
+router.use(wrongAnswersRouter);
+router.use(settingsRouter);
 
 export default router;

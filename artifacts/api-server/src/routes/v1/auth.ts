@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { createHash } from "crypto";
+import bcrypt from "bcrypt";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { signToken, requireAuth, type AuthRequest } from "../../middlewares/auth";
@@ -11,9 +11,14 @@ import {
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+const BCRYPT_ROUNDS = 12;
 
-function hashPassword(pw: string): string {
-  return createHash("sha256").update(pw + "exam-salt").digest("hex");
+async function hashPassword(pw: string): Promise<string> {
+  return bcrypt.hash(pw, BCRYPT_ROUNDS);
+}
+
+async function verifyPassword(pw: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(pw, hash);
 }
 
 router.post("/v1/auth/register", async (req, res): Promise<void> => {
@@ -31,7 +36,7 @@ router.post("/v1/auth/register", async (req, res): Promise<void> => {
   const [user] = await db.insert(usersTable).values({
     name,
     email,
-    passwordHash: hashPassword(password),
+    passwordHash: await hashPassword(password),
     phone: phone ?? null,
     role: "student",
     status: "active",
@@ -62,7 +67,7 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
   }
   const { email, password } = parsed.data;
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (!user || user.passwordHash !== hashPassword(password)) {
+  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
     res.status(401).json({ error: "Invalid email or password" });
     return;
   }

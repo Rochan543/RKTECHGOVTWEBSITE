@@ -29,7 +29,7 @@ export default function ExamDetail() {
         onError: (err) => {
           toast({
             title: 'Failed to start exam',
-            description: err.error || 'Please try again later.',
+            description: (err.data as { error?: string })?.error || 'Please try again later.',
             variant: 'destructive',
           });
         }

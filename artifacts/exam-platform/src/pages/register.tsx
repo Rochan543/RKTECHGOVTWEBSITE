@@ -38,7 +38,7 @@ export default function Register() {
       onError: (err) => {
         toast({
           title: 'Registration failed',
-          description: err.error || 'Something went wrong',
+          description: (err.data as { error?: string })?.error || 'Something went wrong',
           variant: 'destructive',
         });
       }

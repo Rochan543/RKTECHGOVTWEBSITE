@@ -1,0 +1,1 @@
+- [SSC Platform build quirks](ssc-platform-quirks.md) — esbuild + zod/v4 subpath, customFetch export gap, runtime-managed DATABASE_URL

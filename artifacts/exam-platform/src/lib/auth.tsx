@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@workspace/api-client-react';
+import { User, setAuthTokenGetter } from '@workspace/api-client-react';
+
+// Configure the API client to attach the auth token to every request
+setAuthTokenGetter(() => sessionStorage.getItem('token'));
 
 interface AuthContextType {
   user: User | null;
