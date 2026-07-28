@@ -57,8 +57,6 @@ export default function ExamEngine() {
   const questionStartTimeRef = useRef<number>(Date.now());
   const engineRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
-  // In-memory section start times — keyed by sectionId (no localStorage)
-  const sectionStartTimesRef = useRef<Record<number, number>>({});
 
   const { data: session, isLoading } = useGetSession(sessionId, {
     query: { 
@@ -102,11 +100,15 @@ export default function ExamEngine() {
     }
 
     if (activeSection.durationMinutes) {
-      // Track section start time in memory (no localStorage)
-      if (!sectionStartTimesRef.current[activeSection.id]) {
-        sectionStartTimesRef.current[activeSection.id] = Date.now();
-      }
-      const elapsed = Math.floor((Date.now() - sectionStartTimesRef.current[activeSection.id]) / 1000);
+      // Derive section start time from the exam start + sum of all preceding
+      // sections' durations.  This is fully server-authoritative: no
+      // localStorage or in-memory state needed, so it survives page refreshes.
+      const examStartMs = new Date(session.startedAt).getTime();
+      const precedingMs = session.sections
+        .filter((s: any) => s.order < activeSection.order && s.durationMinutes)
+        .reduce((acc: number, s: any) => acc + s.durationMinutes * 60 * 1000, 0);
+      const sectionStartMs = examStartMs + precedingMs;
+      const elapsed = Math.floor((Date.now() - sectionStartMs) / 1000);
       const limit = activeSection.durationMinutes * 60;
       const remaining = Math.max(0, limit - elapsed);
       setSectionTimeLeft(remaining);
@@ -442,8 +444,6 @@ export default function ExamEngine() {
     </div>;
   }
 
-  const currentQ = session.questions[currentIndex];
-  
   // Calculate palette stats
   const stats = session.questions.reduce((acc, q) => {
     acc[q.status] = (acc[q.status] || 0) + 1;
