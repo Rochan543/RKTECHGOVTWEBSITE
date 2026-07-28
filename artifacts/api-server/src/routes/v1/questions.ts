@@ -149,7 +149,7 @@ router.delete("/v1/questions/:id", requireAdmin, async (req, res): Promise<void>
 // Bulk import endpoint — accepts an array of questions and creates them all
 router.post("/v1/questions/bulk", requireAdmin, async (req, res): Promise<void> => {
   const { z } = await import("zod");
-  const schema = z.array(CreateQuestionBody).min(1).max(500);
+  const schema = z.array(CreateQuestionBody).min(1).max(5000);
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });

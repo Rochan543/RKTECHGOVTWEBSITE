@@ -37,9 +37,8 @@ const CATEGORY_COLORS: Record<Category, string> = {
 };
 
 async function fetchCA<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await customFetch(path, opts) as Response;
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  return res.json() as Promise<T>;
+  // customFetch already parses the response body and throws ApiError on non-ok responses
+  return customFetch<T>(path, opts as any);
 }
 
 const defaultForm = {

@@ -4,13 +4,17 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
+// APP_DATABASE_URL allows using an external DB (e.g. Neon) without conflicting
+// with Replit's runtime-managed DATABASE_URL.
+const connectionString = process.env.APP_DATABASE_URL || process.env.DATABASE_URL;
+
+if (!connectionString) {
   throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+    "APP_DATABASE_URL (or DATABASE_URL) must be set. Did you forget to configure a database?",
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({ connectionString });
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

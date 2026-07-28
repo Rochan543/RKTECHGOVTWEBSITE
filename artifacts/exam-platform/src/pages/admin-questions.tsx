@@ -462,7 +462,7 @@ export default function AdminQuestions() {
           <DialogHeader>
             <DialogTitle>Import Questions</DialogTitle>
             <DialogDescription>
-              Upload a CSV, JSON, or TXT file. All imported questions will be assigned to the selected subject and topic.
+              Upload a CSV, JSON, TXT, PDF, DOCX, Excel, or scanned image. All imported questions will be assigned to the selected subject and topic.
             </DialogDescription>
           </DialogHeader>
 
@@ -513,7 +513,7 @@ export default function AdminQuestions() {
                 <>
                   <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-sm font-medium">Click to upload file</p>
-                  <p className="text-xs text-muted-foreground mt-1">CSV, JSON, or TXT</p>
+                  <p className="text-xs text-muted-foreground mt-1">CSV, JSON, TXT, PDF, DOCX, Excel, or scanned image</p>
                 </>
               )}
             </div>

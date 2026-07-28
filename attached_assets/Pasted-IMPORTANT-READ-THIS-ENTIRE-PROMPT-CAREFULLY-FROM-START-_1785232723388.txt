@@ -1,0 +1,640 @@
+IMPORTANT
+
+READ THIS ENTIRE PROMPT CAREFULLY FROM START TO END BEFORE WRITING OR MODIFYING ANY CODE.
+
+DO NOT START IMPLEMENTING UNTIL YOU FULLY UNDERSTAND EVERY REQUIREMENT.
+
+THIS IS A PRODUCTION-GRADE SSC ONLINE EXAMINATION PLATFORM.
+
+Continue from the CURRENT CHECKPOINT.
+
+DO NOT:
+
+- Scan the repository again.
+- Reinstall dependencies.
+- Regenerate existing pages.
+- Regenerate existing APIs.
+- Replace the existing architecture.
+- Remove or overwrite working functionality.
+- Create duplicate pages.
+- Create duplicate routes.
+- Create duplicate database tables.
+- Create duplicate API endpoints.
+
+Resume exactly from the previous checkpoint.
+
+===========================================================
+CRITICAL REQUIREMENTS
+===========================================================
+
+This is a PRODUCTION APPLICATION.
+
+Work very carefully.
+
+Do NOT rush.
+
+Every modification must be backward compatible.
+
+Never break existing functionality.
+
+Always extend existing modules instead of replacing them.
+
+Always reuse existing:
+
+- Components
+- Services
+- Routes
+- Controllers
+- Database tables
+- Hooks
+- API clients
+
+===========================================================
+ARCHITECTURE RULES
+===========================================================
+
+DO NOT use:
+
+❌ localStorage
+
+❌ sessionStorage
+
+❌ in-memory storage
+
+❌ fake APIs
+
+❌ mock data
+
+❌ uploads folder inside project
+
+Application data:
+
+→ PostgreSQL
+
+Authentication:
+
+→ HTTP Only Cookies
+
+File Storage:
+
+→ Cloudinary / AWS S3 (Object Storage)
+
+Database should store ONLY:
+
+- File URL
+- Public ID
+- File Name
+- MIME Type
+- File Size
+- Uploaded By
+- Created At
+
+Never store binary files inside PostgreSQL.
+
+===========================================================
+IMPORTANT - CLOUDINARY
+===========================================================
+
+Cloudinary credentials are NOT available yet.
+
+DO NOT STOP IMPLEMENTATION.
+
+Implement the complete upload architecture.
+
+Create an abstraction layer.
+
+Cloudinary should be one provider.
+
+Storage provider should be configurable.
+
+When credentials are added later, uploads should work WITHOUT changing application code.
+
+Create environment variable support.
+
+If Cloudinary credentials are missing:
+
+DO NOT CRASH.
+
+Show:
+
+"Storage provider is not configured."
+
+Do NOT hardcode credentials.
+
+===========================================================
+ENVIRONMENT CONFIGURATION
+===========================================================
+
+The project currently does not have a proper environment configuration.
+
+Create one.
+
+If .env.example doesn't exist:
+
+Create:
+
+.env.example
+
+Include placeholders only.
+
+Example:
+
+DATABASE_URL=
+
+JWT_SECRET=
+
+JWT_REFRESH_SECRET=
+
+COOKIE_SECRET=
+
+CLOUDINARY_CLOUD_NAME=
+
+CLOUDINARY_API_KEY=
+
+CLOUDINARY_API_SECRET=
+
+NODE_ENV=
+
+PORT=
+
+APP_URL=
+
+Do NOT commit secrets.
+
+Do NOT hardcode credentials.
+
+Application must read values from environment variables.
+
+===========================================================
+1. QUESTION BANK BULK IMPORT
+===========================================================
+
+Current bulk import is broken.
+
+Completely fix it.
+
+Support:
+
+TXT
+
+PDF
+
+DOCX
+
+CSV
+
+Excel
+
+JSON
+
+OCR Import
+
+Scanned PDF
+
+Scanned Images
+
+Support importing thousands of questions.
+
+Automatically detect:
+
+Question
+
+Options
+
+Correct Answer
+
+Explanation
+
+Difficulty
+
+Marks
+
+Negative Marks
+
+Topic
+
+Subject
+
+Question Type
+
+Support:
+
+MCQ
+
+Single Correct
+
+Multiple Correct
+
+Paragraph Questions
+
+Case Study Questions
+
+Image Questions
+
+Math Questions
+
+Preview before import.
+
+Allow editing.
+
+Skip invalid records.
+
+Generate import report.
+
+===========================================================
+2. SECTIONAL TIMING
+===========================================================
+
+Implement professional sectional timing.
+
+Example:
+
+Total Exam Time
+
+60 Minutes
+
+Reasoning
+
+15 Minutes
+
+Maths
+
+15 Minutes
+
+English
+
+15 Minutes
+
+General Knowledge
+
+15 Minutes
+
+Admin should configure:
+
+Section Name
+
+Section Order
+
+Section Duration
+
+Question Count
+
+Mandatory
+
+Negative Marking
+
+Navigation Rules
+
+During exam:
+
+Each section has its own timer.
+
+When timer ends:
+
+Automatically submit section.
+
+Move to next section.
+
+Admin configurable:
+
+Lock previous section
+
+Allow previous section
+
+Submit current section manually
+
+Auto move
+
+Manual move
+
+Confirmation dialog before section submission.
+
+===========================================================
+3. QUIZ TIMER
+===========================================================
+
+Each quiz should have its own timer.
+
+Admin configurable:
+
+Duration
+
+Question Timer
+
+Negative Marking
+
+Auto Submit
+
+Auto Save
+
+===========================================================
+4. NOTES MODULE
+===========================================================
+
+Current Notes implementation is incomplete.
+
+Implement professional uploads.
+
+Allow uploads from:
+
+Computer
+
+Drag & Drop
+
+Paste
+
+External URL
+
+Support:
+
+PDF
+
+DOCX
+
+PPTX
+
+TXT
+
+Markdown
+
+ZIP
+
+Images
+
+Audio
+
+Video
+
+Preview
+
+Progress Bar
+
+Retry
+
+Validation
+
+Cloud Storage
+
+===========================================================
+5. CURRENT AFFAIRS
+===========================================================
+
+Support:
+
+Computer Upload
+
+PDF
+
+Images
+
+Documents
+
+External Links
+
+Rich Text
+
+Preview
+
+Replace File
+
+Delete File
+
+Cloud Storage
+
+===========================================================
+6. FILE STORAGE
+===========================================================
+
+Production Architecture
+
+PostgreSQL
+
+↓
+
+Metadata
+
+↓
+
+Cloudinary / S3
+
+↓
+
+Actual File
+
+Never save files inside project.
+
+===========================================================
+7. SESSION MANAGEMENT
+===========================================================
+
+DO NOT use:
+
+localStorage
+
+sessionStorage
+
+Use:
+
+HTTP Only Cookies
+
+Sessions must survive:
+
+Refresh
+
+Browser Restart (within session lifetime)
+
+===========================================================
+8. VALIDATION
+===========================================================
+
+Verify:
+
+Bulk TXT Import
+
+Bulk PDF Import
+
+Bulk DOCX Import
+
+Bulk CSV Import
+
+Bulk Excel Import
+
+Bulk JSON Import
+
+OCR Import
+
+Section Timer
+
+Section Submit
+
+Quiz Timer
+
+Notes Upload
+
+Current Affairs Upload
+
+Authentication
+
+Browser Refresh
+
+===========================================================
+9. QUALITY
+===========================================================
+
+Fix:
+
+TypeScript Errors
+
+Runtime Errors
+
+Routing Errors
+
+API Errors
+
+Import Errors
+
+Export Errors
+
+Upload Errors
+
+Build Errors
+
+===========================================================
+10. BUILD
+===========================================================
+
+Run:
+
+pnpm build
+
+pnpm typecheck
+
+pnpm lint
+
+Restart frontend.
+
+Restart backend.
+
+Fix every issue before stopping.
+
+===========================================================
+11. DO NOT BREAK EXISTING FEATURES
+===========================================================
+
+Existing features MUST continue working exactly as before.
+
+Do NOT change existing business logic unless fixing a bug.
+
+Preserve:
+
+Authentication
+
+Authorization
+
+RBAC
+
+Student Portal
+
+Admin Portal
+
+Super Admin Portal
+
+Exam Engine
+
+Question Bank
+
+Subjects
+
+Topics
+
+Notes
+
+Current Affairs
+
+Analytics
+
+Reports
+
+Dashboard
+
+===========================================================
+12. REVIEW THE ENTIRE PROJECT
+===========================================================
+
+After completing the requested work, review the entire application and identify anything still incomplete for a production-ready SSC examination platform.
+
+Check every module including (but not limited to):
+
+• Student Dashboard
+• Admin Dashboard
+• Super Admin Dashboard
+• Authentication & Authorization
+• Role & Permission Management
+• Question Bank
+• Bulk Question Import
+• Exam Creation
+• Exam Scheduling
+• Sectional Timing
+• Quiz Timer
+• Mock Tests
+• Practice Tests
+• Live Exams
+• Results
+• Leaderboards
+• Rankings
+• Analytics
+• Reports
+• Subjects
+• Topics
+• Notes
+• Current Affairs
+• File Uploads
+• Notifications
+• Audit Logs
+• System Health
+• Control Panel
+• Settings
+• Backup & Restore
+• API Security
+• Database Integrity
+• Performance
+• Error Handling
+• Logging
+• Responsive Design
+• Accessibility
+
+If any module is incomplete, missing, partially implemented, or using placeholder logic, complete it if possible. If blocked by external limitations (such as missing credentials or quota), document it clearly.
+
+===========================================================
+13. FINAL REPORT
+===========================================================
+
+Provide:
+
+1. Completed Features
+
+2. Bugs Fixed
+
+3. Files Modified
+
+4. APIs Added
+
+5. Database Changes
+
+6. Upload Architecture
+
+7. Environment Variables Added
+
+8. Remaining Production Features (if any)
+
+9. Remaining Bugs (if any)
+
+10. Next Recommended Checkpoint
+
+Only stop if blocked by:
+
+- Replit quota
+- Missing external credentials
+- Platform limitations
+
+Otherwise continue implementing until all requested production features are complete.

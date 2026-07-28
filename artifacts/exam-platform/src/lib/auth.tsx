@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, setAuthTokenGetter, customFetch } from '@workspace/api-client-react';
+import { User, customFetch } from '@workspace/api-client-react';
 
-// Configure the API client to attach the auth token to every request
-setAuthTokenGetter(() => localStorage.getItem('token'));
+// Auth relies entirely on HTTP-only cookies set by the server.
+// customFetch uses credentials: "same-origin" so the cookie is sent automatically.
 
 interface AuthContextType {
   user: User | null;

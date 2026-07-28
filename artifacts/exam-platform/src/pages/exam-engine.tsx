@@ -57,6 +57,8 @@ export default function ExamEngine() {
   const questionStartTimeRef = useRef<number>(Date.now());
   const engineRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
+  // In-memory section start times — keyed by sectionId (no localStorage)
+  const sectionStartTimesRef = useRef<Record<number, number>>({});
 
   const { data: session, isLoading } = useGetSession(sessionId, {
     query: { 
@@ -100,14 +102,11 @@ export default function ExamEngine() {
     }
 
     if (activeSection.durationMinutes) {
-      const sectionStorageKey = `section_start_${sessionId}_${activeSection.id}`;
-      let sectionStart = localStorage.getItem(sectionStorageKey);
-      if (!sectionStart) {
-        sectionStart = String(Date.now());
-        localStorage.setItem(sectionStorageKey, sectionStart);
+      // Track section start time in memory (no localStorage)
+      if (!sectionStartTimesRef.current[activeSection.id]) {
+        sectionStartTimesRef.current[activeSection.id] = Date.now();
       }
-      
-      const elapsed = Math.floor((Date.now() - parseInt(sectionStart, 10)) / 1000);
+      const elapsed = Math.floor((Date.now() - sectionStartTimesRef.current[activeSection.id]) / 1000);
       const limit = activeSection.durationMinutes * 60;
       const remaining = Math.max(0, limit - elapsed);
       setSectionTimeLeft(remaining);
