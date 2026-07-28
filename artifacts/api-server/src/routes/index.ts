@@ -20,6 +20,7 @@ import achievementsRouter from "./v1/achievements";
 import currentAffairsRouter from "./v1/current-affairs";
 import superAdminRouter from "./v1/super-admin";
 import uploadRouter from "./v1/upload";
+import filesRouter from "./v1/files";
 
 const router: IRouter = Router();
 
@@ -44,6 +45,6 @@ router.use(achievementsRouter);
 router.use(currentAffairsRouter);
 router.use(superAdminRouter);
 router.use(uploadRouter);
+router.use(filesRouter);
 
 export default router;
-
