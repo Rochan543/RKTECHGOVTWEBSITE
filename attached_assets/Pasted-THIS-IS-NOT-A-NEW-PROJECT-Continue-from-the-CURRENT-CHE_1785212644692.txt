@@ -1,0 +1,457 @@
+THIS IS NOT A NEW PROJECT.
+
+Continue from the CURRENT CHECKPOINT.
+
+DO NOT:
+- Scan the repository again.
+- Regenerate the application.
+- Recreate existing pages.
+- Recreate existing routes.
+- Recreate database schema.
+- Rebuild completed modules.
+- Replace the architecture.
+- Remove any existing functionality.
+
+Resume exactly from the last checkpoint and continue from where the previous session stopped.
+
+==========================================================
+PRIORITY 1 - FIX RBAC (ROLE-BASED ACCESS CONTROL)
+==========================================================
+
+There is a critical authorization issue that must be fixed before implementing any new modules.
+
+Current behavior:
+
+- Login works successfully.
+- Changing a user's role to "super_admin" from the Admin Panel works.
+- JWT/session correctly contains role = super_admin.
+- Authentication succeeds.
+- However, after login the Super Admin does NOT see the complete Admin Portal.
+
+Currently missing for Super Admin:
+
+• Exams
+• Quizzes
+• Questions
+• Subjects
+• Topics
+• Upload Questions
+• PDF Upload
+• Notes
+• Current Affairs
+• Mock Tests
+• Sectional Tests
+• Analytics
+• Reports
+• Notifications
+• Users
+• Settings
+
+Expected behavior:
+
+SUPER_ADMIN must inherit 100% of ADMIN permissions.
+
+Super Admin should have:
+
+✓ Every Admin page
+✓ Every Admin sidebar item
+✓ Every Admin API
+✓ Every Admin action
+
+PLUS
+
+✓ User Management
+✓ Admin Management
+✓ Role Management
+✓ Feature Flags
+✓ System Settings
+✓ Audit Logs
+✓ Global Analytics
+✓ System Health
+✓ Backup
+✓ Restore
+
+==========================================================
+RBAC IMPLEMENTATION
+==========================================================
+
+Inspect and fix:
+
+• JWT payload
+• Authentication middleware
+• Authorization middleware
+• Permission helpers
+• Role middleware
+• Route guards
+• Sidebar generation
+• Navigation
+• Layout
+• App.tsx
+• ProtectedRoute components
+• Admin Layout
+• Super Admin Layout
+• Backend authorization
+• Frontend authorization
+
+SUPER_ADMIN must automatically inherit every ADMIN permission.
+
+Implement permission hierarchy like:
+
+Student
+
+↓
+
+Admin
+
+↓
+
+Super Admin
+
+Instead of treating Admin and Super Admin as unrelated roles.
+
+==========================================================
+LAYOUT
+==========================================================
+
+If duplicate layouts exist:
+
+Admin Layout
+
+Super Admin Layout
+
+Merge them.
+
+Create ONE shared Admin Layout.
+
+Render common admin pages for both:
+
+Dashboard
+
+Exams
+
+Questions
+
+Subjects
+
+Topics
+
+Question Bank
+
+Uploads
+
+Notes
+
+Mock Tests
+
+Sectional Tests
+
+Current Affairs
+
+Reports
+
+Analytics
+
+Notifications
+
+Users
+
+Settings
+
+Only render these EXTRA pages for Super Admin:
+
+Admin Management
+
+Role Management
+
+Feature Flags
+
+Audit Logs
+
+System Health
+
+Global Analytics
+
+Backup
+
+Restore
+
+Application Settings
+
+==========================================================
+ROUTE GUARDS
+==========================================================
+
+Student Routes
+
+Allow:
+
+student
+
+Admin Routes
+
+Allow:
+
+admin
+
+super_admin
+
+Super Admin Only Routes
+
+Allow:
+
+super_admin
+
+==========================================================
+API AUTHORIZATION
+==========================================================
+
+Every Admin API must allow:
+
+admin
+
+OR
+
+super_admin
+
+instead of only admin.
+
+Verify every protected endpoint.
+
+==========================================================
+NAVIGATION
+==========================================================
+
+Do NOT hide Admin menus for Super Admin.
+
+Generate menus using permissions instead of exact role equality.
+
+==========================================================
+VERIFY LOGIN
+==========================================================
+
+Test completely:
+
+Student Login
+
+Admin Login
+
+Super Admin Login
+
+Verify:
+
+Dashboard
+
+Sidebar
+
+Permissions
+
+APIs
+
+Navigation
+
+Protected Routes
+
+==========================================================
+PRIORITY 2 - CONTINUE PREVIOUS CHECKPOINT
+==========================================================
+
+Resume from the last unfinished work.
+
+Fix:
+
+1. @workspace/db exports.
+
+Ensure every newly added schema table is exported correctly.
+
+2. Resolve every remaining Express req.params typing issue.
+
+3. Run workspace TypeScript validation.
+
+4. Fix every backend TypeScript error.
+
+5. Fix every frontend TypeScript error.
+
+6. Run:
+
+pnpm typecheck
+
+until there are:
+
+0 TypeScript errors
+
+7. Run:
+
+pnpm lint
+
+until there are:
+
+0 lint errors
+
+8. Run:
+
+pnpm build
+
+until there are:
+
+0 build failures
+
+==========================================================
+VERIFY APPLICATION
+==========================================================
+
+Restart:
+
+Frontend
+
+Backend
+
+Verify:
+
+Authentication
+
+Authorization
+
+Database
+
+Migrations
+
+JWT
+
+Cookies
+
+RBAC
+
+API Routes
+
+New Pages
+
+Sidebar
+
+Navigation
+
+Role Switching
+
+==========================================================
+VERIFY NEW ROUTES
+==========================================================
+
+Verify these routes work correctly:
+
+violations
+
+achievements
+
+current-affairs
+
+super-admin
+
+==========================================================
+VERIFY NEW PAGES
+==========================================================
+
+Verify:
+
+Super Admin
+
+Certificates
+
+Study Planner
+
+Admin Current Affairs
+
+Exam Engine
+
+Admin Dashboard
+
+Student Dashboard
+
+==========================================================
+DATABASE
+==========================================================
+
+Verify:
+
+Schema
+
+Relations
+
+Indexes
+
+Constraints
+
+Migrations
+
+Exports
+
+==========================================================
+ONLY AFTER EVERYTHING PASSES
+==========================================================
+
+Continue implementing ONLY the remaining unfinished modules.
+
+Do NOT touch already completed modules.
+
+Do NOT duplicate code.
+
+Do NOT recreate pages.
+
+Continue extending the existing project.
+
+==========================================================
+FINAL VALIDATION
+==========================================================
+
+Before stopping, ensure:
+
+✓ Frontend builds successfully
+
+✓ Backend builds successfully
+
+✓ Database works
+
+✓ Authentication works
+
+✓ Authorization works
+
+✓ Super Admin inherits Admin permissions
+
+✓ Student permissions work
+
+✓ Admin permissions work
+
+✓ Every API works
+
+✓ Every route works
+
+✓ Every page renders
+
+✓ No broken imports
+
+✓ No broken exports
+
+✓ No TypeScript errors
+
+✓ No lint errors
+
+✓ No build failures
+
+==========================================================
+WHEN FINISHED
+==========================================================
+
+Provide a report containing:
+
+1. Fixed Issues
+2. RBAC Changes
+3. Authentication Status
+4. Authorization Status
+5. Verified APIs
+6. Verified Pages
+7. Remaining Modules
+8. Next Implementation Checkpoint
+
+Do NOT scan the repository again.
+
+Do NOT regenerate existing code.
+
+Resume directly from the previous checkpoint and continue until blocked only by quota or external limitations.

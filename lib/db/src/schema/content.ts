@@ -68,6 +68,57 @@ export const bookmarksTable = pgTable(
   (t) => [unique("unique_bookmark").on(t.userId, t.questionId)],
 );
 
+export const currentAffairsTable = pgTable("current_affairs", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  category: text("category", { enum: ["gk", "current_affairs", "gs_news"] })
+    .notNull()
+    .default("current_affairs"),
+  imageUrl: text("image_url"),
+  publishedDate: timestamp("published_date", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const achievementsTable = pgTable(
+  "achievements",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    xp: integer("xp").notNull().default(0),
+    unlockedAt: timestamp("unlocked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [unique("unique_user_achievement").on(t.userId, t.type)],
+);
+
+export const auditLogsTable = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  entity: text("entity").notNull(),
+  entityId: integer("entity_id"),
+  details: text("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const insertNoteSchema = createInsertSchema(notesTable).omit({
   id: true,
   createdAt: true,
@@ -82,3 +133,17 @@ export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notificationsTable.$inferSelect;
 
 export type Bookmark = typeof bookmarksTable.$inferSelect;
+
+export const insertCurrentAffairsSchema = createInsertSchema(currentAffairsTable).omit({
+  id: true, createdAt: true, updatedAt: true,
+});
+export type InsertCurrentAffairs = z.infer<typeof insertCurrentAffairsSchema>;
+export type CurrentAffairs = typeof currentAffairsTable.$inferSelect;
+
+export const insertAchievementSchema = createInsertSchema(achievementsTable).omit({
+  id: true, unlockedAt: true,
+});
+export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type Achievement = typeof achievementsTable.$inferSelect;
+
+export type AuditLog = typeof auditLogsTable.$inferSelect;

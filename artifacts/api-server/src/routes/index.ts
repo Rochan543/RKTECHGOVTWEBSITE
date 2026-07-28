@@ -15,6 +15,10 @@ import usersRouter from "./v1/users";
 import bookmarksRouter from "./v1/bookmarks";
 import wrongAnswersRouter from "./v1/wrong-answers";
 import settingsRouter from "./v1/settings";
+import violationsRouter from "./v1/violations";
+import achievementsRouter from "./v1/achievements";
+import currentAffairsRouter from "./v1/current-affairs";
+import superAdminRouter from "./v1/super-admin";
 
 const router: IRouter = Router();
 
@@ -26,6 +30,7 @@ router.use(examsRouter);
 router.use(subjectsRouter);
 router.use(questionsRouter);
 router.use(sessionsRouter);
+router.use(violationsRouter);
 router.use(resultsRouter);
 router.use(leaderboardRouter);
 router.use(notificationsRouter);
@@ -34,5 +39,8 @@ router.use(usersRouter);
 router.use(bookmarksRouter);
 router.use(wrongAnswersRouter);
 router.use(settingsRouter);
+router.use(achievementsRouter);
+router.use(currentAffairsRouter);
+router.use(superAdminRouter);
 
 export default router;

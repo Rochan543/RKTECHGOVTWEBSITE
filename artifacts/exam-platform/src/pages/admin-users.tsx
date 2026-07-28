@@ -120,7 +120,7 @@ export default function AdminUsers() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No users found</TableCell>
                 </TableRow>
-              ) : users.map((u: { id: number; name: string; email: string; role: string; status: string; rank: number | null; totalScore: number | null; createdAt: string }) => (
+              ) : users.map((u: { id: number; name: string; email: string; role: string; status: string; rank?: number | null; totalScore?: number | null; createdAt: string }) => (
                 <TableRow key={u.id}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">

@@ -5,7 +5,8 @@ import { useAuth } from '@/lib/auth';
 import {
   LayoutDashboard, FileText, BarChart2, Trophy, BookOpen, User as UserIcon,
   LogOut, ShieldCheck, Database, Menu, Bell, TrendingUp, Target, Bookmark,
-  XCircle, Settings, Newspaper, Award, Users, BookMarked,
+  XCircle, Settings, Newspaper, Award, Users, BookMarked, CalendarDays,
+  Medal, Shield, Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -111,7 +112,6 @@ function StudentNav() {
         <SidebarMenu>
           <NavItem href="/practice" label="Practice Hub" icon={Target} />
           <NavItem href="/exams" label="Test Series" icon={FileText} />
-          <NavItem href="/daily-gk" label="Daily GK" icon={Newspaper} />
         </SidebarMenu>
       </SidebarGroup>
 
@@ -122,7 +122,6 @@ function StudentNav() {
           <NavItem href="/performance" label="Analytics" icon={TrendingUp} />
           <NavItem href="/wrong-answers" label="Wrong Answers" icon={XCircle} />
           <NavItem href="/leaderboard" label="Leaderboard" icon={Trophy} />
-          <NavItem href="/achievements" label="Achievements" icon={Award} />
         </SidebarMenu>
       </SidebarGroup>
 
@@ -131,6 +130,16 @@ function StudentNav() {
         <SidebarMenu>
           <NavItem href="/notes" label="Study Material" icon={BookOpen} />
           <NavItem href="/bookmarks" label="Bookmarks" icon={Bookmark} />
+          <NavItem href="/study-planner" label="Study Planner" icon={CalendarDays} />
+          <NavItem href="/daily-gk" label="Daily GK" icon={Newspaper} />
+        </SidebarMenu>
+      </SidebarGroup>
+
+      <SidebarGroup>
+        <SidebarGroupLabel>Credentials</SidebarGroupLabel>
+        <SidebarMenu>
+          <NavItem href="/achievements" label="Achievements" icon={Award} />
+          <NavItem href="/certificates" label="Certificates" icon={Medal} />
         </SidebarMenu>
       </SidebarGroup>
 
@@ -146,35 +155,48 @@ function StudentNav() {
 }
 
 function AdminNav() {
-  const [location] = useLocation();
-
-  const navItems = [
-    { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
-    { href: '/admin/exams', label: 'Exams', icon: FileText },
-    { href: '/admin/questions', label: 'Question Bank', icon: Database },
-    { href: '/admin/subjects', label: 'Subjects & Topics', icon: BookMarked },
-    { href: '/admin/users', label: 'Users', icon: Users },
-    { href: '/admin/notes', label: 'Notes & PDFs', icon: BookOpen },
-  ];
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
 
   return (
-    <SidebarGroup>
-      <SidebarGroupLabel>Administration</SidebarGroupLabel>
-      <SidebarMenu>
-        {navItems.map((item) => (
-          <SidebarMenuItem key={item.href}>
-            <SidebarMenuButton
-              asChild
-              isActive={item.exact ? location === item.href : location === item.href || location.startsWith(item.href + '/')}
-            >
-              <Link href={item.href} className="flex items-center gap-3">
-                <item.icon className="h-4 w-4" />
-                <span>{item.label}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
-      </SidebarMenu>
-    </SidebarGroup>
+    <>
+      {/* ── Overview ─────────────────────────────────── */}
+      <SidebarGroup>
+        <SidebarGroupLabel>Overview</SidebarGroupLabel>
+        <SidebarMenu>
+          <NavItem href="/admin" label="Dashboard" icon={LayoutDashboard} exact />
+        </SidebarMenu>
+      </SidebarGroup>
+
+      {/* ── Content Management ───────────────────────── */}
+      <SidebarGroup>
+        <SidebarGroupLabel>Content</SidebarGroupLabel>
+        <SidebarMenu>
+          <NavItem href="/admin/exams" label="Exams" icon={FileText} />
+          <NavItem href="/admin/questions" label="Question Bank" icon={Database} />
+          <NavItem href="/admin/subjects" label="Subjects & Topics" icon={BookMarked} />
+          <NavItem href="/admin/notes" label="Notes & PDFs" icon={BookOpen} />
+          <NavItem href="/admin/current-affairs" label="Current Affairs" icon={Globe} />
+        </SidebarMenu>
+      </SidebarGroup>
+
+      {/* ── User Management ──────────────────────────── */}
+      <SidebarGroup>
+        <SidebarGroupLabel>Users</SidebarGroupLabel>
+        <SidebarMenu>
+          <NavItem href="/admin/users" label="All Users" icon={Users} />
+        </SidebarMenu>
+      </SidebarGroup>
+
+      {/* ── Super Admin Only ─────────────────────────── */}
+      {isSuperAdmin && (
+        <SidebarGroup>
+          <SidebarGroupLabel>Super Admin</SidebarGroupLabel>
+          <SidebarMenu>
+            <NavItem href="/super-admin" label="Control Panel" icon={Shield} />
+          </SidebarMenu>
+        </SidebarGroup>
+      )}
+    </>
   );
 }

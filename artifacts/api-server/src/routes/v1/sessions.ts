@@ -182,7 +182,9 @@ router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res
     res.status(403).json({ error: "Forbidden" });
     return;
   }
-  if (session.status !== "in_progress") {
+  // Allow auto_submitted as well — violations route sets that status before the
+  // frontend calls /submit to complete scoring. Any other terminal state is a no-op.
+  if (session.status !== "in_progress" && session.status !== "auto_submitted") {
     res.status(400).json({ error: "Session already submitted" });
     return;
   }

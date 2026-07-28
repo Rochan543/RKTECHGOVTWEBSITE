@@ -4,7 +4,8 @@ import {
   useGetSession, 
   getGetSessionQueryKey, 
   useSubmitAnswer, 
-  useSubmitSession 
+  useSubmitSession,
+  customFetch,
 } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +13,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/hooks/use-toast';
 import { Clock, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, BookmarkIcon, List, EyeOff } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+
+type ViolationType = 'tab_switch' | 'window_blur' | 'fullscreen_exit' | 'context_menu' | 'copy_attempt';
+
+async function recordViolation(sessionId: number, type: ViolationType): Promise<{ autoSubmitted?: boolean; violationCount?: number }> {
+  try {
+    const res = await customFetch(`/api/v1/sessions/${sessionId}/violations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type }),
+    }) as Response;
+    if (res.ok) return res.json() as Promise<{ autoSubmitted?: boolean; violationCount?: number }>;
+  } catch { /* silent */ }
+  return {};
+}
 
 // Status colors mapping
 const statusColors = {
@@ -107,26 +122,24 @@ export default function ExamEngine() {
     return () => clearInterval(timer);
   }, [timeLeft, toast]);
 
-  // Anti-cheat: Fullscreen monitoring
+  // Anti-cheat violation handler ref — set after handleAutoSubmit is declared below
+  const handleViolationAutoSubmitRef = useRef<() => void>(() => {});
+
+  // Prevent right click and copy
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isFull = !!document.fullscreenElement;
-      setIsFullscreen(isFull);
-      if (!isFull && session?.status === 'in_progress') {
-        setShowWarning(true);
+    const preventDefault = (e: Event) => {
+      e.preventDefault();
+      if (sessionId && session?.status === 'in_progress') {
+        recordViolation(sessionId, e.type === 'contextmenu' ? 'context_menu' : 'copy_attempt');
       }
     };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [session?.status]);
-
-  // Prevent right click and selection
-  useEffect(() => {
-    const preventDefault = (e: Event) => e.preventDefault();
     document.addEventListener('contextmenu', preventDefault);
-    return () => document.removeEventListener('contextmenu', preventDefault);
-  }, []);
+    document.addEventListener('copy', preventDefault);
+    return () => {
+      document.removeEventListener('contextmenu', preventDefault);
+      document.removeEventListener('copy', preventDefault);
+    };
+  }, [sessionId, session?.status]);
 
   const handleAutoSubmit = useCallback(() => {
     if (!session || session.status !== 'in_progress') return;
@@ -139,6 +152,51 @@ export default function ExamEngine() {
       }
     );
   }, [session, sessionId, submitSession, setLocation, toast]);
+
+  // Keep the violation auto-submit ref in sync
+  handleViolationAutoSubmitRef.current = handleAutoSubmit;
+
+  // Anti-cheat: Fullscreen + Tab Switch + Window Blur monitoring
+  useEffect(() => {
+    if (!sessionId || session?.status !== 'in_progress') return;
+
+    const onFullscreenChange = () => {
+      const isFull = !!document.fullscreenElement;
+      setIsFullscreen(isFull);
+      if (!isFull) {
+        setShowWarning(true);
+        recordViolation(sessionId, 'fullscreen_exit').then((r) => {
+          if (r.autoSubmitted) handleViolationAutoSubmitRef.current();
+          else if (r.violationCount) toast({ title: `⚠️ Violation ${r.violationCount}/5`, description: 'Fullscreen exit detected.', variant: 'destructive' });
+        });
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        recordViolation(sessionId, 'tab_switch').then((r) => {
+          if (r.autoSubmitted) handleViolationAutoSubmitRef.current();
+          else if (r.violationCount) toast({ title: `⚠️ Tab switch (${r.violationCount}/5)`, description: 'Switching tabs is not allowed.', variant: 'destructive' });
+        });
+      }
+    };
+
+    const onWindowBlur = () => {
+      recordViolation(sessionId, 'window_blur').then((r) => {
+        if (r.autoSubmitted) handleViolationAutoSubmitRef.current();
+        else if (r.violationCount) toast({ title: `⚠️ Window focus lost (${r.violationCount}/5)`, description: 'Leaving the window is not allowed.', variant: 'destructive' });
+      });
+    };
+
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onWindowBlur);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onWindowBlur);
+    };
+  }, [session?.status, sessionId, toast]);
 
   const saveCurrentAnswer = (newStatus: 'answered' | 'marked' | 'marked_answered' | 'visited', nextIndex?: number) => {
     if (!session?.questions[currentIndex]) return;

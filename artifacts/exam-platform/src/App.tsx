@@ -37,6 +37,12 @@ import AdminQuestions from '@/pages/admin-questions';
 import AdminSubjects from '@/pages/admin-subjects';
 import AdminUsers from '@/pages/admin-users';
 import AdminNotes from '@/pages/admin-notes';
+import AdminCurrentAffairs from '@/pages/admin-current-affairs';
+
+// New Pages
+import SuperAdmin from '@/pages/super-admin';
+import Certificates from '@/pages/certificates';
+import StudyPlanner from '@/pages/study-planner';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,7 +50,15 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
+function ProtectedRoute({
+  component: Component,
+  adminOnly = false,
+  superAdminOnly = false,
+}: {
+  component: React.ComponentType;
+  adminOnly?: boolean;
+  superAdminOnly?: boolean;
+}) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -60,6 +74,12 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
     return null;
   }
 
+  // Permission hierarchy: super_admin ⊇ admin ⊇ student
+  if (superAdminOnly && user.role !== 'super_admin') {
+    window.location.href = '/dashboard';
+    return null;
+  }
+
   if (adminOnly && user.role !== 'admin' && user.role !== 'super_admin') {
     window.location.href = '/dashboard';
     return null;
@@ -68,10 +88,19 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
   return <Component />;
 }
 
-function DashboardRoute({ component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
+function DashboardRoute({
+  component,
+  adminOnly = false,
+  superAdminOnly = false,
+}: {
+  component: React.ComponentType;
+  adminOnly?: boolean;
+  superAdminOnly?: boolean;
+}) {
   return (
     <ProtectedRoute
       adminOnly={adminOnly}
+      superAdminOnly={superAdminOnly}
       component={() => (
         <DashboardLayout>
           {React.createElement(component)}
@@ -126,6 +155,10 @@ function Router() {
       {/* Fullscreen Exam Engine */}
       <Route path="/exam/:sessionId">{() => <ProtectedRoute component={ExamEngine} />}</Route>
 
+      {/* Student extra pages */}
+      <Route path="/certificates">{() => <DashboardRoute component={Certificates} />}</Route>
+      <Route path="/study-planner">{() => <DashboardRoute component={StudyPlanner} />}</Route>
+
       {/* Admin */}
       <Route path="/admin">{() => <DashboardRoute adminOnly component={AdminDashboard} />}</Route>
       <Route path="/admin/exams">{() => <DashboardRoute adminOnly component={AdminExams} />}</Route>
@@ -133,6 +166,10 @@ function Router() {
       <Route path="/admin/subjects">{() => <DashboardRoute adminOnly component={AdminSubjects} />}</Route>
       <Route path="/admin/users">{() => <DashboardRoute adminOnly component={AdminUsers} />}</Route>
       <Route path="/admin/notes">{() => <DashboardRoute adminOnly component={AdminNotes} />}</Route>
+      <Route path="/admin/current-affairs">{() => <DashboardRoute adminOnly component={AdminCurrentAffairs} />}</Route>
+
+      {/* Super Admin Only */}
+      <Route path="/super-admin">{() => <DashboardRoute superAdminOnly component={SuperAdmin} />}</Route>
 
       <Route component={NotFound} />
     </Switch>

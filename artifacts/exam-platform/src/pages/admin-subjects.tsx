@@ -58,7 +58,7 @@ export default function AdminSubjects() {
       return;
     }
     createTopic.mutate(
-      { data: { name: topicForm.name.trim(), description: topicForm.description.trim() || null, subjectId: parseInt(topicForm.subjectId) } },
+      { data: { name: topicForm.name.trim(), subjectId: parseInt(topicForm.subjectId) } },
       {
         onSuccess: () => {
           toast({ title: 'Topic created' });
@@ -148,7 +148,7 @@ export default function AdminSubjects() {
             </Card>
           ) : (
             <div className="grid gap-2">
-              {(topics ?? []).map((t: { id: number; name: string; description: string | null; subjectId: number }) => (
+              {(topics ?? []).map((t: { id: number; name: string; description?: string | null; subjectId: number }) => (
                 <div key={t.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
                   <Layers className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1">

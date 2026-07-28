@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, setAuthTokenGetter } from '@workspace/api-client-react';
+import { User, setAuthTokenGetter, customFetch } from '@workspace/api-client-react';
 
 // Configure the API client to attach the auth token to every request
 setAuthTokenGetter(() => sessionStorage.getItem('token'));
@@ -20,21 +20,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load from sessionStorage on mount
     const storedToken = sessionStorage.getItem('token');
-    const storedUser = sessionStorage.getItem('user');
-
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse user from sessionStorage', e);
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('user');
-      }
+    if (!storedToken) {
+      setIsLoading(false);
+      return;
     }
-    setIsLoading(false);
+
+    // Always fetch /auth/me on bootstrap so the role reflected in the UI
+    // is the current DB role — not a stale sessionStorage snapshot.
+    (customFetch('/api/v1/auth/me', { method: 'GET' }) as Promise<Response>)
+      .then(async (res) => {
+        if (!res.ok) {
+          // Token is invalid or user suspended — clear session
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+          return;
+        }
+        const freshUser: User = await res.json();
+        setToken(storedToken);
+        setUser(freshUser);
+        // Keep sessionStorage in sync so next cold-start has a warm snapshot
+        sessionStorage.setItem('user', JSON.stringify(freshUser));
+      })
+      .catch(() => {
+        // Network error — fall back to cached user so offline-ish loads still work
+        const storedUser = sessionStorage.getItem('user');
+        if (storedUser) {
+          try {
+            setToken(storedToken);
+            setUser(JSON.parse(storedUser));
+          } catch { /* corrupt cache — leave logged out */ }
+        }
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   const login = (newToken: string, newUser: User) => {

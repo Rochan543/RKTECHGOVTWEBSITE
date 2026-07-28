@@ -1,52 +1,67 @@
 # SSC Exam Platform
 
-A production-grade online examination platform for SSC, Banking, Railway, UPSC, and other competitive exams.
+A full-stack exam preparation platform for SSC (Staff Selection Commission) aspirants.
 
-## Architecture
+## Stack
 
-**Monorepo** managed with pnpm workspaces.
+- **Frontend**: React 19 + Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, Wouter
+- **Backend**: Express 5, Drizzle ORM, PostgreSQL
+- **Auth**: Custom JWT (HS256 via HMAC, stored in `sessionStorage`)
+- **Monorepo**: pnpm workspaces
 
-| Package | Location | Description |
-|---------|----------|-------------|
-| `@workspace/exam-platform` | `artifacts/exam-platform/` | React 19 + Vite frontend |
-| `@workspace/api-server` | `artifacts/api-server/` | Express 5 API server |
-| `@workspace/db` | `lib/db/` | Drizzle ORM + PostgreSQL schema |
-| `@workspace/api-zod` | `lib/api-zod/` | Generated Zod validators |
-| `@workspace/api-client-react` | `lib/api-client-react/` | Generated React Query API client |
+## Structure
 
-## Tech Stack
-
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, wouter, Framer Motion
-- **Backend**: Node.js, Express 5, TypeScript, Pino logging
-- **Database**: PostgreSQL (Replit built-in), Drizzle ORM
-- **Auth**: JWT (custom HS256 via Node.js crypto), bcrypt, Bearer tokens stored in sessionStorage
-
-## Running the Project
-
-Both workflows are managed by Replit:
-- **API Server**: `pnpm --filter @workspace/api-server run dev` → builds then starts on `$PORT`
-- **Frontend**: `pnpm --filter @workspace/exam-platform run dev` → Vite dev server on `$PORT`
-
-### Schema changes
-
-```bash
-cd lib/db && pnpm run push   # push schema to dev DB
+```
+artifacts/
+  exam-platform/   # React/Vite frontend
+  api-server/      # Express API server
+lib/
+  db/              # Drizzle schema + DB client
+  api-zod/         # Zod schemas shared between FE and BE
+  api-client-react/ # Generated API client hooks
 ```
 
-## Portals
+## Running locally
 
-- **Student Portal** — `/` (login → `/dashboard`)
-- **Admin Portal** — `/admin` (requires `admin` or `super_admin` role)
+Both services start automatically via Replit workflows:
 
-## Default Admin Account
+| Service | Workflow | Command |
+|---------|----------|---------|
+| API server | `artifacts/api-server: API Server` | `pnpm --filter @workspace/api-server run dev` |
+| Frontend | `artifacts/exam-platform: web` | `pnpm --filter @workspace/exam-platform run dev` |
 
-After seeding, an admin account is created:
-- **Email**: `admin@sscplatform.com`
-- **Password**: `Admin@123456`
+## Required secrets
 
-## User Preferences
+| Variable | Description |
+|----------|-------------|
+| `SESSION_SECRET` | JWT signing secret (already set) |
+| `DATABASE_URL` | PostgreSQL connection string |
 
-- Keep the existing pnpm monorepo structure — do not restructure or migrate
-- Use `zod` (not `zod/v4`) as the import for routes in `artifacts/api-server/` — esbuild can't resolve subpath exports
-- `customFetch` must be exported from `lib/api-client-react/src/index.ts` for frontend pages that use it directly
-- `DATABASE_URL` is runtime-managed by Replit — do not set it manually
+## Role hierarchy
+
+```
+student  →  admin  →  super_admin
+```
+
+- **student**: can take exams, view results, bookmarks, notes
+- **admin**: all student access + admin portal (exam/question/user management)
+- **super_admin**: all admin access + Super Admin Control Panel
+
+## RBAC notes
+
+- `requireAuth` middleware always re-validates the user's **current role from the database** — role changes take effect immediately without a re-login.
+- `requireAdmin` allows both `admin` and `super_admin`.
+- `requireSuperAdmin` is for super-admin-only API endpoints.
+- Frontend route guard: `adminOnly` allows `admin`+`super_admin`; `superAdminOnly` allows only `super_admin`.
+
+## Database migrations
+
+```bash
+cd lib/db
+pnpm drizzle-kit push   # push schema to DB
+pnpm drizzle-kit studio # open Drizzle Studio
+```
+
+## User preferences
+
+<!-- Add any project-level conventions here -->

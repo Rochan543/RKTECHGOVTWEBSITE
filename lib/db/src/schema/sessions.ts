@@ -82,6 +82,25 @@ export const resultsTable = pgTable("results", {
     .defaultNow(),
 });
 
+export const violationsTable = pgTable("violations", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id")
+    .notNull()
+    .references(() => testSessionsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  type: text("type", {
+    enum: ["tab_switch", "window_blur", "fullscreen_exit", "context_menu", "copy_attempt"],
+  }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type Violation = typeof violationsTable.$inferSelect;
+export type InsertViolation = typeof violationsTable.$inferInsert;
+
 export const insertTestSessionSchema = createInsertSchema(
   testSessionsTable
 ).omit({ id: true, startedAt: true });

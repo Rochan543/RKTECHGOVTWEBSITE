@@ -45,8 +45,25 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     res.status(401).json({ error: "Invalid token" });
     return;
   }
+
+  // Always re-validate from DB so role changes (e.g. promotion to super_admin)
+  // take effect immediately without requiring a re-login.
+  const [user] = await db
+    .select({ role: usersTable.role, status: usersTable.status })
+    .from(usersTable)
+    .where(eq(usersTable.id, payload.userId as number));
+
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return;
+  }
+  if (user.status === "suspended") {
+    res.status(403).json({ error: "Account suspended" });
+    return;
+  }
+
   req.userId = payload.userId as number;
-  req.userRole = payload.role as string;
+  req.userRole = user.role; // Always use DB role — never stale JWT role
   next();
 }
 
@@ -54,6 +71,16 @@ export async function requireAdmin(req: AuthRequest, res: Response, next: NextFu
   await requireAuth(req, res, async () => {
     if (req.userRole !== "admin" && req.userRole !== "super_admin") {
       res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    next();
+  });
+}
+
+export async function requireSuperAdmin(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  await requireAuth(req, res, async () => {
+    if (req.userRole !== "super_admin") {
+      res.status(403).json({ error: "Super admin access required" });
       return;
     }
     next();

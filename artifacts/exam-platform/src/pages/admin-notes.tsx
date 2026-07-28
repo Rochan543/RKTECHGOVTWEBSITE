@@ -141,7 +141,7 @@ export default function AdminNotes() {
                     No materials yet
                   </TableCell>
                 </TableRow>
-              ) : notes.map((n: { id: number; title: string; type: string; subjectId: number | null; size: number; downloadCount: number | null; fileUrl: string; description: string | null }) => (
+              ) : notes.map((n: { id: number; title: string; type: string; subjectId: number | null; size: number; downloadCount?: number | null; fileUrl: string; description?: string | null }) => (
                 <TableRow key={n.id}>
                   <TableCell>
                     <div className="flex items-center gap-2">

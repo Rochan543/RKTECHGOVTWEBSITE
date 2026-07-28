@@ -37,7 +37,7 @@ function ExamCard({ exam }: { exam: { id: number; title: string; type: string; d
 }
 
 function ExamList({ type }: { type: string }) {
-  const { data, isLoading } = useListExams({ type: type as 'mock_test' | 'sectional' | 'topic_test' | 'pyq', limit: 50, page: 1 });
+  const { data, isLoading } = useListExams({ type: type as import('@workspace/api-client-react').ListExamsType, limit: 50, page: 1 });
   const exams = data?.data ?? [];
 
   if (isLoading) {

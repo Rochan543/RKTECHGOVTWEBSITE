@@ -184,7 +184,7 @@ export default function AdminQuestions() {
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">No questions found</TableCell>
                 </TableRow>
-              ) : questions.map((q: { id: number; text: string; subjectName: string | null; difficulty: string; positiveMarks: number; negativeMarks: number; options: { id: number; text: string; isCorrect: boolean }[]; type: string; explanation: string | null; hint: string | null; subjectId: number; topicId: number; topicName: string | null }) => (
+              ) : questions.map((q: { id: number; text: string; subjectName?: string | null; difficulty: string; positiveMarks: number; negativeMarks: number; options?: { id: number; text: string; isCorrect: boolean }[]; type: string; explanation?: string | null; hint?: string | null; subjectId: number; topicId?: number | null; topicName?: string | null }) => (
                 <TableRow key={q.id}>
                   <TableCell className="max-w-xs">
                     <p className="text-sm line-clamp-2">{q.text}</p>
@@ -198,7 +198,7 @@ export default function AdminQuestions() {
                   <TableCell className="text-xs text-muted-foreground">+{q.positiveMarks} / -{q.negativeMarks}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(q)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit({ ...q, explanation: q.explanation ?? null, hint: q.hint ?? null, topicId: q.topicId ?? 0, options: q.options ?? [] })}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(q.id)}>
