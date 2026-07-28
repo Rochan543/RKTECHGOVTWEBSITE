@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Search, ExternalLink, FileText, Loader2, ChevronLeft, ChevronRight, Download, Upload, X } from 'lucide-react';
+import { Plus, Trash2, Search, ExternalLink, FileText, Loader2, ChevronLeft, ChevronRight, Download, Upload, X, RefreshCw, AlertCircle } from 'lucide-react';
 
 const TYPE_COLORS: Record<string, string> = {
   pdf: 'bg-red-100 text-red-700',
@@ -50,9 +50,13 @@ export default function AdminNotes() {
   const [form, setForm] = useState<NoteForm>(defaultForm());
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lastFile, setLastFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (file: File) => {
+    setLastFile(file);
+    setUploadError(null);
     setIsUploading(true);
     setUploadProgress(10);
     try {
@@ -85,15 +89,15 @@ export default function AdminNotes() {
                   file.type.startsWith('video/') ? 'video' : 
                   file.type.startsWith('image/') ? 'image' : f.type,
           }));
+          setUploadError(null);
           toast({ title: 'File uploaded successfully' });
         } catch (err: any) {
           const msg = err.message || String(err);
-          // Standardized warning if not configured
-          if (msg.includes("not configured") || msg.includes("503")) {
-            toast({ title: 'Upload failed', description: 'Storage provider is not configured.', variant: 'destructive' });
-          } else {
-            toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
-          }
+          const displayMsg = (msg.includes("not configured") || msg.includes("503"))
+            ? 'Storage provider is not configured.'
+            : msg;
+          setUploadError(displayMsg);
+          toast({ title: 'Upload failed', description: displayMsg, variant: 'destructive' });
         } finally {
           setIsUploading(false);
           setUploadProgress(0);
@@ -101,10 +105,16 @@ export default function AdminNotes() {
       };
       reader.readAsDataURL(file);
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message || String(err), variant: 'destructive' });
+      const msg = err.message || String(err);
+      setUploadError(msg);
+      toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
       setIsUploading(false);
       setUploadProgress(0);
     }
+  };
+
+  const handleRetry = () => {
+    if (lastFile) handleFileUpload(lastFile);
   };
 
   const { data, isLoading } = useListNotes({ page, limit: 20 });
@@ -257,7 +267,7 @@ export default function AdminNotes() {
       )}
 
       {/* Create Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setUploadError(null); setLastFile(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Study Material</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
@@ -320,6 +330,20 @@ export default function AdminNotes() {
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
                     </div>
+                  </div>
+                ) : uploadError ? (
+                  <div className="space-y-2">
+                    <AlertCircle className="h-6 w-6 mx-auto text-destructive" />
+                    <p className="text-xs font-medium text-destructive line-clamp-2">{uploadError}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={e => { e.stopPropagation(); handleRetry(); }}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" /> Retry Upload
+                    </Button>
                   </div>
                 ) : form.fileUrl ? (
                   <div className="flex items-center justify-center gap-2">

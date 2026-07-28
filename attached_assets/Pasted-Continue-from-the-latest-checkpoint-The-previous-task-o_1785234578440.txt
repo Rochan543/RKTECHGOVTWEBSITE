@@ -1,0 +1,119 @@
+Continue from the latest checkpoint.
+
+The previous task only completed the foundational fixes.
+
+DO NOT stop yet.
+
+The implementation is NOT complete.
+
+Do NOT scan the repository again.
+
+Do NOT repeat completed work.
+
+Continue implementing ONLY the remaining production features.
+
+The remaining work includes:
+
+1. Complete the backend Bulk Import parser:
+   - PDF
+   - DOCX
+   - Excel (XLSX)
+   - CSV
+   - JSON
+   - TXT
+   - OCR Images (tesseract.js)
+   - OCR PDFs
+   - Interactive Preview
+   - Validation
+   - Import Summary
+   - Skip Invalid Records
+   - Edit Before Import
+
+2. Create the production Upload Service:
+   - Cloudinary storage provider only
+   - Upload API
+   - Upload service abstraction for future extensibility
+   - Store ONLY metadata in PostgreSQL
+   - Gracefully return:
+     "Storage provider is not configured."
+     if Cloudinary credentials are missing.
+
+3. Add production Notes uploads:
+   - Drag & Drop
+   - Computer Upload
+   - Progress Bar
+   - Validation
+   - Preview
+   - Retry
+
+4. Add production Current Affairs uploads with the same functionality.
+
+5. Create the file_uploads database table containing:
+   - id
+   - fileUrl
+   - publicId
+   - fileName
+   - mimeType
+   - fileSize
+   - uploadedBy
+   - createdAt
+
+6. Extend the exams schema:
+   - Section Timers
+   - Question Timers
+   - Auto Save
+   - Auto Submit
+   - Navigation Rules
+   - Section Configuration
+
+7. Complete the Admin Exam Configuration UI.
+
+8. Complete Quiz Timer support.
+
+9. Create `.env.example` containing only:
+
+DATABASE_URL=
+APP_DATABASE_URL=
+JWT_SECRET=
+JWT_REFRESH_SECRET=
+COOKIE_SECRET=
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+NODE_ENV=
+PORT=
+APP_URL=
+
+Do NOT include AWS S3 variables because this application uses Cloudinary only.
+
+10. Verify HTTP-only cookie authentication is fully implemented.
+    - No localStorage
+    - No sessionStorage
+    - Cookie authentication only
+    - Authorization header supported only as backward compatibility
+
+11. Run:
+- pnpm build
+- pnpm typecheck
+- pnpm lint
+
+12. Restart both services.
+
+13. Test every implemented feature.
+
+IMPORTANT
+
+This production application uses:
+
+- PostgreSQL as the primary database
+- Cloudinary for all file storage
+- HTTP-only Cookies for authentication
+- No AWS S3
+- No localStorage
+- No sessionStorage
+- No uploads folder on the server
+- No binary files stored in PostgreSQL
+
+Store only file metadata in PostgreSQL and upload all files to Cloudinary.
+
+Do not stop until every remaining production feature above is complete or you are blocked only by Replit quota.

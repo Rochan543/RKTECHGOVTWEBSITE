@@ -516,17 +516,17 @@ export default function ExamEngine() {
           <div className="flex-1 overflow-auto p-6 lg:p-10 scroll-smooth">
             <div className="max-w-4xl mx-auto">
               <div className="text-xl leading-relaxed font-medium mb-8 text-foreground select-none">
-                {currentQ.text}
+                {currentQ?.text}
               </div>
               
-              {currentQ.imageUrl && (
+              {currentQ?.imageUrl && (
                 <div className="mb-8 rounded-lg overflow-hidden border inline-block">
                   <img src={currentQ.imageUrl} alt="Question figure" className="max-h-80 object-contain" draggable="false" />
                 </div>
               )}
 
               <div className="space-y-4">
-                {currentQ.options.map((opt, i) => (
+                {(currentQ?.options ?? []).map((opt, i) => (
                   <div 
                     key={opt.id}
                     onClick={() => setLocalSelectedOption(opt.id)}

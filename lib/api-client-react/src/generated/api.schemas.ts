@@ -270,6 +270,9 @@ export interface ExamSection {
   order: number;
   /** @nullable */
   subjectId?: number | null;
+  navigationRule?: string;
+  autoMove?: boolean;
+  isMandatory?: boolean;
 }
 
 export interface ExamDetail {
@@ -579,6 +582,8 @@ export interface SessionQuestion {
   selectedOptionId?: number | null;
   timeSpentSeconds?: number;
   order: number;
+  /** @nullable */
+  sectionId?: number | null;
 }
 
 export interface SessionDetail {
@@ -591,6 +596,10 @@ export interface SessionDetail {
   submittedAt?: string | null;
   durationMinutes: number;
   currentSectionIndex?: number;
+  /** @nullable */
+  questionTimerSeconds?: number | null;
+  autoSave?: boolean;
+  autoSubmit?: boolean;
   questions: SessionQuestion[];
   sections: ExamSection[];
 }

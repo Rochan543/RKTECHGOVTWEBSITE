@@ -400,15 +400,43 @@ export async function parseDocument(
   } else if (lowerName.endsWith(".pdf") || mimeType === "application/pdf") {
     try {
       const data = await pdf(buffer);
-      questions = parseRawText(data.text);
-      // If it parsed nothing, it might be a scanned PDF. Trigger OCR on PDF if needed, 
-      // but for now we fall back to simple text parse. We can log.
-      if (questions.length === 0) {
-        console.log("PDF parsed 0 questions - checking if scanned PDF");
+      const extractedText = data.text?.trim() ?? "";
+      if (extractedText.length >= 50) {
+        // Text-based PDF — parse directly
+        questions = parseRawText(extractedText);
+      } else {
+        // Very little text extracted — likely a scanned (image-only) PDF.
+        // Server-side PDF-to-image rendering requires system libraries (Ghostscript/Poppler)
+        // that are not available in this environment. Return a clear guidance record so the
+        // admin knows to re-export the file as an image.
+        questions = [
+          {
+            text: "⚠️ This PDF appears to be a scanned (image-only) document with no extractable text. " +
+              "To import questions via OCR, please export each page as a PNG or JPEG image and re-upload it.",
+            options: [{ text: "N/A", isCorrect: true }],
+            type: "single_choice",
+            difficulty: "medium",
+            positiveMarks: 1,
+            negativeMarks: 0,
+            isValid: false,
+            validationError: "Scanned PDF — re-export pages as PNG/JPEG for OCR import",
+          },
+        ];
       }
     } catch (err) {
-      console.error("PDF parse failed, attempting fallback OCR", err);
-      // Scanned PDF OCR placeholder/fallback
+      console.error("PDF parse failed:", err);
+      questions = [
+        {
+          text: "⚠️ Failed to parse this PDF. The file may be corrupted or password-protected.",
+          options: [{ text: "N/A", isCorrect: true }],
+          type: "single_choice",
+          difficulty: "medium",
+          positiveMarks: 1,
+          negativeMarks: 0,
+          isValid: false,
+          validationError: "PDF parse error — check the file and try again",
+        },
+      ];
     }
   } else if (mimeType.startsWith("image/") || lowerName.endsWith(".png") || lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
     questions = await parseOCRImage(buffer);

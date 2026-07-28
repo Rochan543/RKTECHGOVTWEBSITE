@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { customFetch } from '@workspace/api-client-react';
-import { Plus, Pencil, Trash2, Search, Newspaper, Loader2, Upload, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Newspaper, Loader2, Upload, X, RefreshCw, AlertCircle } from 'lucide-react';
 
 type Category = 'gk' | 'current_affairs' | 'gs_news';
 
@@ -58,9 +58,13 @@ export default function AdminCurrentAffairs() {
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [lastFile, setLastFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (file: File) => {
+    setLastFile(file);
+    setUploadError(null);
     setIsUploading(true);
     setUploadProgress(10);
     try {
@@ -87,14 +91,15 @@ export default function AdminCurrentAffairs() {
             ...f,
             imageUrl: uploadRes.fileUrl,
           }));
+          setUploadError(null);
           toast({ title: 'Image uploaded successfully' });
         } catch (err: any) {
           const msg = err.message || String(err);
-          if (msg.includes("not configured") || msg.includes("503")) {
-            toast({ title: 'Upload failed', description: 'Storage provider is not configured.', variant: 'destructive' });
-          } else {
-            toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
-          }
+          const displayMsg = (msg.includes("not configured") || msg.includes("503"))
+            ? 'Storage provider is not configured.'
+            : msg;
+          setUploadError(displayMsg);
+          toast({ title: 'Upload failed', description: displayMsg, variant: 'destructive' });
         } finally {
           setIsUploading(false);
           setUploadProgress(0);
@@ -102,10 +107,16 @@ export default function AdminCurrentAffairs() {
       };
       reader.readAsDataURL(file);
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message || String(err), variant: 'destructive' });
+      const msg = err.message || String(err);
+      setUploadError(msg);
+      toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
       setIsUploading(false);
       setUploadProgress(0);
     }
+  };
+
+  const handleRetry = () => {
+    if (lastFile) handleFileUpload(lastFile);
   };
   const queryClient = useQueryClient();
 
@@ -302,7 +313,7 @@ export default function AdminCurrentAffairs() {
       )}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) { setUploadError(null); setLastFile(null); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editItem ? 'Edit Article' : 'New Article'}</DialogTitle>
@@ -376,6 +387,20 @@ export default function AdminCurrentAffairs() {
                     <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                       <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
                     </div>
+                  </div>
+                ) : uploadError ? (
+                  <div className="space-y-2">
+                    <AlertCircle className="h-6 w-6 mx-auto text-destructive" />
+                    <p className="text-xs font-medium text-destructive line-clamp-2">{uploadError}</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={e => { e.stopPropagation(); handleRetry(); }}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" /> Retry Upload
+                    </Button>
                   </div>
                 ) : form.imageUrl ? (
                   <div className="flex items-center justify-center gap-2">

@@ -15,4 +15,7 @@ export interface ExamSection {
   order: number;
   /** @nullable */
   subjectId?: number | null;
+  navigationRule?: string;
+  autoMove?: boolean;
+  isMandatory?: boolean;
 }
