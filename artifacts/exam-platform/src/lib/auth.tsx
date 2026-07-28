@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, setAuthTokenGetter, customFetch } from '@workspace/api-client-react';
 
 // Configure the API client to attach the auth token to every request
-setAuthTokenGetter(() => sessionStorage.getItem('token'));
+setAuthTokenGetter(() => localStorage.getItem('token'));
 
 interface AuthContextType {
   user: User | null;
@@ -20,31 +20,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = sessionStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     if (!storedToken) {
       setIsLoading(false);
       return;
     }
 
     // Always fetch /auth/me on bootstrap so the role reflected in the UI
-    // is the current DB role — not a stale sessionStorage snapshot.
+    // is the current DB role — not a stale localStorage snapshot.
     (customFetch('/api/v1/auth/me', { method: 'GET' }) as Promise<Response>)
       .then(async (res) => {
         if (!res.ok) {
           // Token is invalid or user suspended — clear session
-          sessionStorage.removeItem('token');
-          sessionStorage.removeItem('user');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
           return;
         }
         const freshUser: User = await res.json();
         setToken(storedToken);
         setUser(freshUser);
-        // Keep sessionStorage in sync so next cold-start has a warm snapshot
-        sessionStorage.setItem('user', JSON.stringify(freshUser));
+        // Keep localStorage in sync so next cold-start has a warm snapshot
+        localStorage.setItem('user', JSON.stringify(freshUser));
       })
       .catch(() => {
         // Network error — fall back to cached user so offline-ish loads still work
-        const storedUser = sessionStorage.getItem('user');
+        const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
             setToken(storedToken);
@@ -58,15 +58,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = (newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
-    sessionStorage.setItem('token', newToken);
-    sessionStorage.setItem('user', JSON.stringify(newUser));
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   };
 
   return (

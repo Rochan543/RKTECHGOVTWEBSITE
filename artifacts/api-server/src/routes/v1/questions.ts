@@ -146,4 +146,41 @@ router.delete("/v1/questions/:id", requireAdmin, async (req, res): Promise<void>
   res.json({ message: "Question deleted" });
 });
 
+// Bulk import endpoint — accepts an array of questions and creates them all
+router.post("/v1/questions/bulk", requireAdmin, async (req, res): Promise<void> => {
+  const { z } = await import("zod");
+  const schema = z.array(CreateQuestionBody).min(1).max(500);
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const created: unknown[] = [];
+  for (const item of parsed.data) {
+    const { options, ...rest } = item;
+    const [q] = await db.insert(questionsTable).values({
+      text: rest.text,
+      type: rest.type,
+      difficulty: rest.difficulty,
+      explanation: rest.explanation ?? null,
+      hint: rest.hint ?? null,
+      imageUrl: rest.imageUrl ?? null,
+      positiveMarks: rest.positiveMarks,
+      negativeMarks: rest.negativeMarks,
+      subjectId: rest.subjectId,
+      topicId: rest.topicId,
+    }).returning();
+    for (let i = 0; i < options.length; i++) {
+      await db.insert(questionOptionsTable).values({
+        questionId: q.id,
+        text: options[i].text,
+        isCorrect: options[i].isCorrect,
+        order: i + 1,
+      });
+    }
+    created.push({ id: q.id });
+  }
+  res.status(201).json({ created: created.length, ids: created });
+});
+
 export default router;

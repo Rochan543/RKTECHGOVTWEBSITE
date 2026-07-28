@@ -33,6 +33,7 @@ import Achievements from '@/pages/achievements';
 // Admin Pages
 import AdminDashboard from '@/pages/admin-dashboard';
 import AdminExams from '@/pages/admin-exams';
+import AdminExamForm from '@/pages/admin-exam-form';
 import AdminQuestions from '@/pages/admin-questions';
 import AdminSubjects from '@/pages/admin-subjects';
 import AdminUsers from '@/pages/admin-users';
@@ -162,6 +163,8 @@ function Router() {
       {/* Admin */}
       <Route path="/admin">{() => <DashboardRoute adminOnly component={AdminDashboard} />}</Route>
       <Route path="/admin/exams">{() => <DashboardRoute adminOnly component={AdminExams} />}</Route>
+      <Route path="/admin/exams/new">{() => <DashboardRoute adminOnly component={AdminExamForm} />}</Route>
+      <Route path="/admin/exams/:id/edit">{() => <DashboardRoute adminOnly component={AdminExamForm} />}</Route>
       <Route path="/admin/questions">{() => <DashboardRoute adminOnly component={AdminQuestions} />}</Route>
       <Route path="/admin/subjects">{() => <DashboardRoute adminOnly component={AdminSubjects} />}</Route>
       <Route path="/admin/users">{() => <DashboardRoute adminOnly component={AdminUsers} />}</Route>

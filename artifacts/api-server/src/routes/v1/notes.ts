@@ -3,6 +3,7 @@ import { db, notesTable, subjectsTable, examCategoriesTable } from "@workspace/d
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/auth";
 import { ListNotesQueryParams, CreateNoteBody, GetNoteParams, DeleteNoteParams } from "@workspace/api-zod";
+import { z } from "zod";
 
 const router: IRouter = Router();
 
@@ -74,6 +75,35 @@ router.get("/v1/notes/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Note not found" });
     return;
   }
+  res.json(await buildNote(note));
+});
+
+router.put("/v1/notes/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const schema = z.object({
+    title: z.string().min(1).optional(),
+    description: z.string().nullish(),
+    type: z.enum(["pdf", "docx", "ppt", "image", "video"]).optional(),
+    fileUrl: z.string().url().optional(),
+    thumbnailUrl: z.string().nullish(),
+    size: z.number().optional(),
+    subjectId: z.number().nullish(),
+    categoryId: z.number().nullish(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const updateData: Record<string, unknown> = {};
+  if (parsed.data.title != null) updateData.title = parsed.data.title;
+  if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+  if (parsed.data.type != null) updateData.type = parsed.data.type;
+  if (parsed.data.fileUrl != null) updateData.fileUrl = parsed.data.fileUrl;
+  if (parsed.data.thumbnailUrl !== undefined) updateData.thumbnailUrl = parsed.data.thumbnailUrl;
+  if (parsed.data.size != null) updateData.size = parsed.data.size;
+  if (parsed.data.subjectId !== undefined) updateData.subjectId = parsed.data.subjectId;
+  if (parsed.data.categoryId !== undefined) updateData.categoryId = parsed.data.categoryId;
+  const [note] = await db.update(notesTable).set(updateData).where(eq(notesTable.id, id)).returning();
+  if (!note) { res.status(404).json({ error: "Note not found" }); return; }
   res.json(await buildNote(note));
 });
 

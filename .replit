@@ -11,6 +11,35 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "API Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Exam Platform"
+
+[[workflows.workflow]]
+name = "API Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=8080 SESSION_SECRET=$SESSION_SECRET pnpm --filter @workspace/api-server run dev"
+
+[[workflows.workflow]]
+name = "Exam Platform"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=22619 BASE_PATH=/ pnpm --filter @workspace/exam-platform run dev"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true

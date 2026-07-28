@@ -8,8 +8,10 @@ import {
   testSessionsTable,
   resultsTable,
 } from "@workspace/db";
-import { eq, count, avg, desc, and } from "drizzle-orm";
-import { requireAdmin, requireAuth, type AuthRequest } from "../../middlewares/auth";
+import { eq, count, desc } from "drizzle-orm";
+import { requireAdmin, type AuthRequest } from "../../middlewares/auth";
+import { verifyToken } from "../../middlewares/auth";
+import { usersTable } from "@workspace/db";
 import {
   ListExamsQueryParams,
   CreateExamBody,
@@ -19,10 +21,33 @@ import {
   DeleteExamParams,
   GetExamStatsParams,
 } from "@workspace/api-zod";
+import type { Request, Response, NextFunction } from "express";
 
 const router: IRouter = Router();
 
-router.get("/v1/exams", async (req, res): Promise<void> => {
+// Optional auth — populates req.userId/userRole if a valid token is present, but never blocks
+async function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction): Promise<void> {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    try {
+      const token = authHeader.slice(7);
+      const payload = verifyToken(token);
+      if (payload && typeof payload.userId === "number") {
+        const [user] = await db
+          .select({ role: usersTable.role, status: usersTable.status })
+          .from(usersTable)
+          .where(eq(usersTable.id, payload.userId as number));
+        if (user && user.status !== "suspended") {
+          req.userId = payload.userId as number;
+          req.userRole = user.role;
+        }
+      }
+    } catch { /* ignore */ }
+  }
+  next();
+}
+
+router.get("/v1/exams", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
   const params = ListExamsQueryParams.safeParse(req.query);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -31,12 +56,19 @@ router.get("/v1/exams", async (req, res): Promise<void> => {
   const { page = 1, limit = 20, categoryId, type, status } = params.data;
   const offset = (page - 1) * limit;
 
-  let query = db.select().from(examsTable);
-  // Manual filter application
-  const allExams = await db.select().from(examsTable);
+  const isAdmin = req.userRole === "admin" || req.userRole === "super_admin";
+
+  const allExams = await db.select().from(examsTable).orderBy(desc(examsTable.createdAt));
   let filtered = allExams;
-  if (status) filtered = filtered.filter(e => e.status === status);
-  else filtered = filtered.filter(e => e.status === "published");
+
+  // Admins see all exams unless they explicitly filter by status
+  if (status) {
+    filtered = filtered.filter(e => e.status === status);
+  } else if (!isAdmin) {
+    // Students and unauthenticated users only see published exams
+    filtered = filtered.filter(e => e.status === "published");
+  }
+
   if (categoryId) filtered = filtered.filter(e => e.categoryId === categoryId);
   if (type) filtered = filtered.filter(e => e.type === type);
 
@@ -93,7 +125,7 @@ router.post("/v1/exams", requireAdmin, async (req, res): Promise<void> => {
   res.status(201).json({ ...exam, totalQuestions: 0, attemptCount: 0, averageScore: null, categoryName: null });
 });
 
-router.get("/v1/exams/:id", async (req, res): Promise<void> => {
+router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
   const params = GetExamParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

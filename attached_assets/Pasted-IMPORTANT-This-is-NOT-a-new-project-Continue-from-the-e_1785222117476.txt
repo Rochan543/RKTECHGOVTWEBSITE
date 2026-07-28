@@ -1,0 +1,640 @@
+IMPORTANT:
+
+This is NOT a new project.
+
+Continue from the existing codebase.
+
+DO NOT regenerate the application.
+DO NOT change the existing architecture.
+DO NOT overwrite completed modules.
+DO NOT remove any existing functionality.
+DO NOT create duplicate pages or APIs.
+
+The project is already running.
+
+Your job is to FIX the existing issues and COMPLETE the missing Admin Panel functionality while preserving everything that already works.
+
+==========================================================
+HIGHEST PRIORITY
+==========================================================
+
+DO NOT BREAK ANY EXISTING FUNCTIONALITY.
+
+Before modifying any module:
+
+• Understand the existing implementation.
+• Extend it instead of replacing it.
+• Reuse existing components.
+• Reuse existing APIs.
+• Reuse existing database tables where possible.
+
+Everything currently working must continue working exactly the same after your changes.
+
+==========================================================
+1. EXAMS MODULE
+==========================================================
+
+Currently:
+
+When creating an Exam, after clicking Create Exam it redirects to a "Page Not Found" screen.
+
+Fix this completely.
+
+Verify:
+
+• Create Exam
+• Edit Exam
+• Delete Exam
+• Publish Exam
+• Draft Exam
+• Duplicate Exam
+• View Exam
+
+Ensure routing is correct.
+
+Fix broken navigation.
+
+Fix missing routes.
+
+Verify backend API.
+
+Verify database.
+
+==========================================================
+2. QUESTION BANK
+==========================================================
+
+Currently questions must be entered manually.
+
+Implement professional import features.
+
+Add:
+
+✓ Import from TXT (Notepad)
+
+✓ Import from PDF
+
+✓ Import from DOCX
+
+✓ Import from CSV
+
+✓ Import from Excel
+
+✓ Import from JSON
+
+✓ Bulk Import
+
+✓ OCR Import from scanned PDF/images
+
+Support:
+
+MCQ
+
+Single Correct
+
+Multiple Correct
+
+Paragraph Questions
+
+Image Questions
+
+Math Questions
+
+Automatically detect:
+
+Question
+
+Options
+
+Correct Answer
+
+Explanation
+
+Difficulty
+
+Marks
+
+Negative Marks
+
+Preview before import.
+
+Allow editing before saving.
+
+==========================================================
+3. SUBJECTS & TOPICS
+==========================================================
+
+Current issues:
+
+After creating Subjects/Topics:
+
+• Refresh causes logout.
+
+Fix this.
+
+Also verify:
+
+Create
+
+Edit
+
+Delete
+
+Search
+
+Pagination
+
+Instant UI update.
+
+Do not require manual refresh.
+
+==========================================================
+4. NOTES MODULE
+==========================================================
+
+Current issue:
+
+Notes disappear after refresh.
+
+Fix persistence.
+
+Implement:
+
+Create
+
+Edit
+
+Delete
+
+Categories
+
+Search
+
+Tags
+
+Visibility
+
+Draft
+
+Published
+
+File Upload
+
+Allow upload from:
+
+Device
+
+Drag & Drop
+
+Paste
+
+Cloud Links
+
+Support:
+
+PDF
+
+DOCX
+
+PPTX
+
+TXT
+
+Markdown
+
+ZIP
+
+Images
+
+Video Links
+
+YouTube Links
+
+Google Drive
+
+OneDrive
+
+Dropbox
+
+External URLs
+
+==========================================================
+5. CURRENT AFFAIRS
+==========================================================
+
+Current issue:
+
+Current Affairs disappear after refresh.
+
+Fix database persistence.
+
+Implement:
+
+CRUD
+
+Categories
+
+Search
+
+Tags
+
+Images
+
+PDF
+
+External Links
+
+Rich Text Editor
+
+Draft
+
+Published
+
+==========================================================
+6. FILE UPLOADS
+==========================================================
+
+Improve uploads everywhere.
+
+Support:
+
+Upload from Device
+
+Drag & Drop
+
+Paste
+
+External URL
+
+Cloudinary
+
+AWS S3
+
+Image Preview
+
+PDF Preview
+
+Progress Bar
+
+File Validation
+
+==========================================================
+7. EXAM SCHEDULING
+==========================================================
+
+Add professional scheduling.
+
+Schedule:
+
+Mock Tests
+
+Live Exams
+
+Practice Tests
+
+Daily Quiz
+
+Weekly Quiz
+
+Sectional Tests
+
+Custom Tests
+
+Support:
+
+Start Date
+
+Start Time
+
+End Date
+
+End Time
+
+Time Zone
+
+Auto Publish
+
+Auto Unpublish
+
+Recurring Schedule
+
+==========================================================
+8. ADMIN DASHBOARD
+==========================================================
+
+Current dashboard is mostly static.
+
+Convert it into a real dashboard.
+
+Real-time widgets:
+
+Total Students
+
+Active Students
+
+Admins
+
+Super Admins
+
+Exams
+
+Questions
+
+Subjects
+
+Topics
+
+Mock Tests
+
+Live Tests
+
+Notes
+
+Current Affairs
+
+Daily Registrations
+
+Daily Logins
+
+Exam Attempts
+
+Revenue (if applicable)
+
+Latest Activity
+
+Recent Exams
+
+System Status
+
+Server Status
+
+Storage
+
+API Status
+
+==========================================================
+9. DELETE OPERATIONS
+==========================================================
+
+Add Delete functionality everywhere.
+
+Support:
+
+Delete Exam
+
+Delete Question
+
+Delete Subject
+
+Delete Topic
+
+Delete Notes
+
+Delete Current Affairs
+
+Delete Users
+
+Soft Delete where appropriate.
+
+Confirmation Dialog.
+
+==========================================================
+10. CONTROL PANEL
+==========================================================
+
+Complete every module.
+
+Analytics
+
+Admins
+
+Permissions
+
+Roles
+
+Audit Logs
+
+System Settings
+
+Feature Flags
+
+Notifications
+
+Health Status
+
+Backups
+
+Restore
+
+==========================================================
+11. ANALYTICS
+==========================================================
+
+Everything must work.
+
+Charts
+
+Graphs
+
+Exam Analytics
+
+Student Analytics
+
+Subject Analytics
+
+Question Analytics
+
+Usage Analytics
+
+==========================================================
+12. HEALTH SYNC
+==========================================================
+
+Implement automatic refresh every 30 seconds.
+
+Refresh:
+
+Dashboard
+
+Analytics
+
+Health Status
+
+System Metrics
+
+Admin Counts
+
+Student Counts
+
+Exam Counts
+
+Without page reload.
+
+==========================================================
+13. ADMIN DASHBOARD AUTO REFRESH
+==========================================================
+
+Dashboard should automatically update every 30 seconds.
+
+Use polling or React Query.
+
+Do not require manual refresh.
+
+==========================================================
+14. AUTHENTICATION
+==========================================================
+
+Refreshing the browser must NOT log users out.
+
+Use proper HTTP-only cookie authentication.
+
+Persist session correctly.
+
+Verify:
+
+Student
+
+Admin
+
+Super Admin
+
+==========================================================
+15. DATA PERSISTENCE
+==========================================================
+
+After refresh, verify all created data still exists.
+
+Subjects
+
+Topics
+
+Notes
+
+Current Affairs
+
+Exams
+
+Questions
+
+Users
+
+Everything must come from PostgreSQL.
+
+No temporary state.
+
+==========================================================
+16. QUALITY
+==========================================================
+
+No placeholders.
+
+No fake APIs.
+
+No duplicate code.
+
+No console errors.
+
+No TypeScript errors.
+
+No lint errors.
+
+No broken routes.
+
+No broken navigation.
+
+==========================================================
+17. VALIDATION
+==========================================================
+
+After every completed module:
+
+Run:
+
+pnpm typecheck
+
+Fix all errors.
+
+Run:
+
+pnpm lint
+
+Fix all issues.
+
+Run:
+
+pnpm build
+
+Restart:
+
+Frontend
+
+Backend
+
+Verify everything works.
+
+==========================================================
+18. FINAL TESTING
+==========================================================
+
+Test the following completely:
+
+✓ Student Login
+
+✓ Admin Login
+
+✓ Super Admin Login
+
+✓ Exam Creation
+
+✓ Exam Scheduling
+
+✓ Question Import
+
+✓ Subject CRUD
+
+✓ Topic CRUD
+
+✓ Notes CRUD
+
+✓ Current Affairs CRUD
+
+✓ Dashboard
+
+✓ Analytics
+
+✓ Health Sync
+
+✓ Audit Logs
+
+✓ Admin Management
+
+✓ Delete Operations
+
+✓ Refresh without logout
+
+✓ File Upload
+
+✓ PDF Upload
+
+✓ Image Upload
+
+✓ External URL Upload
+
+==========================================================
+FINAL REPORT
+==========================================================
+
+When finished provide:
+
+1. Fixed Bugs
+2. New Features Added
+3. Files Modified
+4. Database Changes
+5. APIs Added
+6. Pages Updated
+7. Validation Results
+8. Remaining Work (if blocked only by quota)
+
+Do NOT stop after one issue.
+
+Continue implementing automatically until every item above is completed or until blocked only by external limitations (quota/runtime).
