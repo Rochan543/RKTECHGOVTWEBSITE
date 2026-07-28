@@ -22,75 +22,92 @@ async function verifyPassword(pw: string, hash: string): Promise<boolean> {
 }
 
 router.post("/v1/auth/register", async (req, res): Promise<void> => {
-  const parsed = RegisterBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+  try {
+    const parsed = RegisterBody.safeParse(req.body);
+    if (!parsed.success) {
+      // Return the first human-readable validation error instead of raw JSON
+      const firstIssue = parsed.error.issues[0];
+      const field = firstIssue?.path.join(".") ?? "field";
+      const message = firstIssue?.message ?? "Invalid input";
+      res.status(400).json({ error: `${field}: ${message}` });
+      return;
+    }
+    const { name, email, password, phone } = parsed.data;
+    const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    if (existing.length > 0) {
+      res.status(409).json({ error: "Email already registered" });
+      return;
+    }
+    const [user] = await db.insert(usersTable).values({
+      name,
+      email,
+      passwordHash: await hashPassword(password),
+      phone: phone ?? null,
+      role: "student",
+      status: "active",
+    }).returning();
+    const token = signToken({ userId: user.id, role: user.role });
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        phone: user.phone ?? null,
+        avatarUrl: user.avatarUrl ?? null,
+        rank: user.rank ?? null,
+        totalScore: user.totalScore ?? null,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Internal server error";
+    res.status(500).json({ error: message });
   }
-  const { name, email, password, phone } = parsed.data;
-  const existing = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (existing.length > 0) {
-    res.status(409).json({ error: "Email already registered" });
-    return;
-  }
-  const [user] = await db.insert(usersTable).values({
-    name,
-    email,
-    passwordHash: await hashPassword(password),
-    phone: phone ?? null,
-    role: "student",
-    status: "active",
-  }).returning();
-  const token = signToken({ userId: user.id, role: user.role });
-  res.status(201).json({
-    token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      phone: user.phone ?? null,
-      avatarUrl: user.avatarUrl ?? null,
-      rank: user.rank ?? null,
-      totalScore: user.totalScore ?? null,
-      createdAt: user.createdAt,
-    },
-  });
 });
 
 router.post("/v1/auth/login", async (req, res): Promise<void> => {
-  const parsed = LoginBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+  try {
+    const parsed = LoginBody.safeParse(req.body);
+    if (!parsed.success) {
+      const firstIssue = parsed.error.issues[0];
+      const field = firstIssue?.path.join(".") ?? "field";
+      const message = firstIssue?.message ?? "Invalid input";
+      res.status(400).json({ error: `${field}: ${message}` });
+      return;
+    }
+    const { email, password } = parsed.data;
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+      res.status(401).json({ error: "Invalid email or password" });
+      return;
+    }
+    if (user.status === "suspended") {
+      res.status(401).json({ error: "Account suspended" });
+      return;
+    }
+    const token = signToken({ userId: user.id, role: user.role });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        phone: user.phone ?? null,
+        avatarUrl: user.avatarUrl ?? null,
+        rank: user.rank ?? null,
+        totalScore: user.totalScore ?? null,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Internal server error";
+    res.status(500).json({ error: message });
   }
-  const { email, password } = parsed.data;
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-  if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
-    res.status(401).json({ error: "Invalid email or password" });
-    return;
-  }
-  if (user.status === "suspended") {
-    res.status(401).json({ error: "Account suspended" });
-    return;
-  }
-  const token = signToken({ userId: user.id, role: user.role });
-  res.json({
-    token,
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      phone: user.phone ?? null,
-      avatarUrl: user.avatarUrl ?? null,
-      rank: user.rank ?? null,
-      totalScore: user.totalScore ?? null,
-      createdAt: user.createdAt,
-    },
-  });
 });
 
 router.post("/v1/auth/logout", (_req, res): void => {
