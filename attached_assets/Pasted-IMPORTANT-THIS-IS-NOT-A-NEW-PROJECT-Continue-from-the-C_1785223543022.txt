@@ -1,0 +1,549 @@
+IMPORTANT
+
+THIS IS NOT A NEW PROJECT.
+
+Continue from the CURRENT CHECKPOINT.
+
+DO NOT:
+
+- Scan the repository again.
+- Reinstall dependencies.
+- Regenerate existing pages.
+- Regenerate existing APIs.
+- Replace the architecture.
+- Remove existing functionality.
+- Change working modules.
+- Create duplicate pages.
+- Create duplicate routes.
+
+Resume exactly where the previous session stopped.
+
+==================================================
+RULES
+==================================================
+
+The application is already in production development.
+
+Your job is to COMPLETE and FIX the existing implementation.
+
+Never replace working code.
+
+Always extend existing modules.
+
+Everything currently working must continue working.
+
+Do not stop after completing one feature.
+
+Complete every item below before moving to unrelated work.
+
+After every completed module:
+
+• Test it
+• Fix runtime issues
+• Verify frontend
+• Verify backend
+• Verify database
+
+==================================================
+1. ADMIN EXAMS
+==================================================
+
+Current issue:
+
+Creating an Exam redirects to "Page Not Found".
+
+Fix completely.
+
+Verify:
+
+Create Exam
+
+Edit Exam
+
+Delete Exam
+
+View Exam
+
+Publish
+
+Draft
+
+Duplicate
+
+Schedule
+
+Correct routing
+
+Correct API
+
+Correct database
+
+==================================================
+2. QUESTION BANK
+==================================================
+
+Add professional Question Import.
+
+Support:
+
+TXT (Notepad)
+
+PDF
+
+DOCX
+
+CSV
+
+Excel
+
+JSON
+
+Bulk Import
+
+OCR Import
+
+Image OCR
+
+Automatically detect:
+
+Question
+
+Options
+
+Correct Answer
+
+Explanation
+
+Marks
+
+Negative Marks
+
+Difficulty
+
+Preview before import.
+
+Allow editing before saving.
+
+==================================================
+3. SUBJECTS & TOPICS
+==================================================
+
+Current issue:
+
+Refreshing logs out the Admin.
+
+Fix authentication persistence.
+
+Current issue:
+
+Subjects/Topics should remain after refresh.
+
+Verify:
+
+Create
+
+Edit
+
+Delete
+
+Search
+
+Pagination
+
+Instant UI update
+
+Persistent database storage
+
+==================================================
+4. NOTES
+==================================================
+
+Current issue:
+
+Notes disappear after refresh.
+
+Fix persistence.
+
+Support:
+
+Create
+
+Edit
+
+Delete
+
+Search
+
+Categories
+
+Tags
+
+Draft
+
+Publish
+
+Upload from Device
+
+Drag & Drop
+
+External URL
+
+Support:
+
+PDF
+
+DOCX
+
+PPTX
+
+TXT
+
+Markdown
+
+ZIP
+
+Images
+
+==================================================
+5. CURRENT AFFAIRS
+==================================================
+
+Current issue:
+
+Current Affairs disappear after refresh.
+
+Fix persistence.
+
+Implement full CRUD.
+
+Support:
+
+Images
+
+PDF
+
+External Links
+
+Rich Text
+
+Draft
+
+Published
+
+==================================================
+6. FILE UPLOADS
+==================================================
+
+Support uploading from:
+
+Device
+
+Drag & Drop
+
+Paste
+
+Cloudinary
+
+AWS S3
+
+External URL
+
+Google Drive
+
+Dropbox
+
+OneDrive
+
+Support:
+
+Images
+
+PDF
+
+DOCX
+
+PPTX
+
+Videos
+
+ZIP
+
+==================================================
+7. EXAM SCHEDULING
+==================================================
+
+Implement:
+
+Start Date
+
+End Date
+
+Start Time
+
+End Time
+
+Time Zone
+
+Publish Later
+
+Recurring Schedule
+
+Auto Publish
+
+Auto Close
+
+==================================================
+8. ADMIN DASHBOARD
+==================================================
+
+Current dashboard is not functional.
+
+Convert it into a real dashboard.
+
+Display live data:
+
+Students
+
+Admins
+
+Super Admins
+
+Exams
+
+Questions
+
+Subjects
+
+Topics
+
+Mock Tests
+
+Notes
+
+Current Affairs
+
+Exam Attempts
+
+Recent Activity
+
+Server Status
+
+Database Status
+
+Storage
+
+API Status
+
+==================================================
+9. DELETE OPERATIONS
+==================================================
+
+Implement delete functionality for:
+
+Exams
+
+Questions
+
+Subjects
+
+Topics
+
+Notes
+
+Current Affairs
+
+Users
+
+Include:
+
+Confirmation Dialog
+
+Soft Delete where appropriate
+
+==================================================
+10. CONTROL PANEL
+==================================================
+
+Everything must work.
+
+Analytics
+
+Admins
+
+Roles
+
+Permissions
+
+Feature Flags
+
+Audit Logs
+
+Settings
+
+System Health
+
+Backup
+
+Restore
+
+==================================================
+11. AUTO REFRESH
+==================================================
+
+Dashboard
+
+Analytics
+
+Health
+
+Admin Counts
+
+Exam Counts
+
+Student Counts
+
+Refresh automatically every 30 seconds.
+
+Do NOT require page reload.
+
+==================================================
+12. AUTHENTICATION
+==================================================
+
+Refreshing the browser must NEVER log users out.
+
+Use proper HTTP-only cookie sessions.
+
+Verify:
+
+Student
+
+Admin
+
+Super Admin
+
+==================================================
+13. DATA PERSISTENCE
+==================================================
+
+After refresh, verify data still exists.
+
+Subjects
+
+Topics
+
+Notes
+
+Current Affairs
+
+Questions
+
+Exams
+
+Users
+
+Everything must come from PostgreSQL.
+
+==================================================
+14. SUPER ADMIN
+==================================================
+
+Super Admin must inherit ALL Admin permissions.
+
+Plus:
+
+Admin Management
+
+Role Management
+
+Audit Logs
+
+Feature Flags
+
+System Settings
+
+Backup
+
+Restore
+
+==================================================
+15. QUALITY
+==================================================
+
+Fix:
+
+Broken routes
+
+Broken APIs
+
+Broken navigation
+
+Broken imports
+
+Broken exports
+
+TypeScript errors
+
+Runtime errors
+
+Lint issues
+
+Build issues
+
+==================================================
+16. VALIDATION
+==================================================
+
+Run:
+
+pnpm build
+
+pnpm typecheck
+
+pnpm lint
+
+Restart frontend.
+
+Restart backend.
+
+Test every modified module.
+
+Fix all failures.
+
+==================================================
+17. STOP CONDITION
+==================================================
+
+Only stop if blocked by:
+
+Quota
+
+Platform limitation
+
+Missing credentials
+
+If blocked:
+
+Save progress.
+
+Commit completed work.
+
+Provide:
+
+Completed Modules
+
+Remaining Modules
+
+Files Modified
+
+Database Changes
+
+APIs Added
+
+Next Checkpoint
+
+Do NOT perform another repository scan.
+
+Do NOT rebuild completed modules.
+
+Resume exactly from the previous checkpoint.

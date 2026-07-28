@@ -19,7 +19,6 @@ const router: IRouter = Router();
 
 router.get(
   "/v1/super-admin/analytics",
-  requireAuth,
   requireSuperAdmin,
   async (_req, res): Promise<void> => {
     const [totalUsers] = await db.select({ value: count() }).from(usersTable);
@@ -79,7 +78,6 @@ router.get(
 
 router.get(
   "/v1/super-admin/health",
-  requireAuth,
   requireSuperAdmin,
   async (_req, res): Promise<void> => {
     const start = Date.now();
@@ -109,7 +107,6 @@ router.get(
 
 router.get(
   "/v1/super-admin/audit-logs",
-  requireAuth,
   requireSuperAdmin,
   async (req, res): Promise<void> => {
     const schema = z.object({
@@ -148,7 +145,6 @@ router.get(
 
 router.get(
   "/v1/super-admin/admins",
-  requireAuth,
   requireSuperAdmin,
   async (_req, res): Promise<void> => {
     const admins = await db
@@ -173,7 +169,6 @@ router.get(
 
 router.post(
   "/v1/super-admin/admins",
-  requireAuth,
   requireSuperAdmin,
   async (req, res): Promise<void> => {
     const schema = z.object({ userId: z.number().int() });
@@ -197,7 +192,6 @@ router.post(
 
 router.delete(
   "/v1/super-admin/admins/:id",
-  requireAuth,
   requireSuperAdmin,
   async (req, res): Promise<void> => {
     const id = parseInt(req.params.id as string, 10);

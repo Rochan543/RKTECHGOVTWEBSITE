@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { useListSubjects, useCreateSubject, useListTopics, useCreateTopic } from '@workspace/api-client-react';
+import {
+  useListSubjects, useCreateSubject, useListTopics, useCreateTopic,
+  getListSubjectsQueryKey, getListTopicsQueryKey,
+} from '@workspace/api-client-react';
 import { customFetch } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,8 +52,8 @@ export default function AdminSubjects() {
   const createTopic = useCreateTopic();
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['subjects'] });
-    queryClient.invalidateQueries({ queryKey: ['topics'] });
+    queryClient.invalidateQueries({ queryKey: getListSubjectsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListTopicsQueryKey() });
   };
 
   const updateSubjectMutation = useMutation({

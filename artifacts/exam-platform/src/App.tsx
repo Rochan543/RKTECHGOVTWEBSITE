@@ -162,9 +162,10 @@ function Router() {
 
       {/* Admin */}
       <Route path="/admin">{() => <DashboardRoute adminOnly component={AdminDashboard} />}</Route>
-      <Route path="/admin/exams">{() => <DashboardRoute adminOnly component={AdminExams} />}</Route>
+      {/* More-specific exam routes MUST come before the generic /admin/exams list */}
       <Route path="/admin/exams/new">{() => <DashboardRoute adminOnly component={AdminExamForm} />}</Route>
       <Route path="/admin/exams/:id/edit">{() => <DashboardRoute adminOnly component={AdminExamForm} />}</Route>
+      <Route path="/admin/exams">{() => <DashboardRoute adminOnly component={AdminExams} />}</Route>
       <Route path="/admin/questions">{() => <DashboardRoute adminOnly component={AdminQuestions} />}</Route>
       <Route path="/admin/subjects">{() => <DashboardRoute adminOnly component={AdminSubjects} />}</Route>
       <Route path="/admin/users">{() => <DashboardRoute adminOnly component={AdminUsers} />}</Route>

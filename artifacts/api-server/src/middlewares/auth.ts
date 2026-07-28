@@ -34,12 +34,19 @@ export interface AuthRequest extends Request {
 }
 
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  let token = "";
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (authHeader?.startsWith("Bearer ")) {
+    token = authHeader.slice(7);
+  } else if (req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const token = authHeader.slice(7);
+
   const payload = verifyToken(token);
   if (!payload || typeof payload.userId !== "number") {
     res.status(401).json({ error: "Invalid token" });

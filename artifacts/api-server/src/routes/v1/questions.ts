@@ -183,4 +183,29 @@ router.post("/v1/questions/bulk", requireAdmin, async (req, res): Promise<void> 
   res.status(201).json({ created: created.length, ids: created });
 });
 
+// Parse bulk questions document for previewing
+router.post("/v1/questions/import/parse", requireAdmin, async (req, res): Promise<void> => {
+  try {
+    const { fileName, mimeType, fileData } = req.body;
+    if (!fileData) {
+      res.status(400).json({ error: "Missing fileData parameter." });
+      return;
+    }
+
+    let base64Content = fileData;
+    if (fileData.includes(";base64,")) {
+      base64Content = fileData.split(";base64,")[1];
+    }
+    const buffer = Buffer.from(base64Content, "base64");
+
+    const { parseDocument } = await import("../../lib/parser");
+    const report = await parseDocument(buffer, fileName || "import.txt", mimeType || "text/plain");
+
+    res.json(report);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Error parsing document";
+    res.status(500).json({ error: msg });
+  }
+});
+
 export default router;

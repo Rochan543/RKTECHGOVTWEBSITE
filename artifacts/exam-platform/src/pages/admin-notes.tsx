@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useListNotes, useCreateNote, useDeleteNote, useListSubjects } from '@workspace/api-client-react';
+import { useState, useRef } from 'react';
+import { useListNotes, useCreateNote, useDeleteNote, useListSubjects, customFetch } from '@workspace/api-client-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Search, ExternalLink, FileText, Loader2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Plus, Trash2, Search, ExternalLink, FileText, Loader2, ChevronLeft, ChevronRight, Download, Upload, X } from 'lucide-react';
 
 const TYPE_COLORS: Record<string, string> = {
   pdf: 'bg-red-100 text-red-700',
@@ -48,13 +48,74 @@ export default function AdminNotes() {
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<NoteForm>(defaultForm());
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data, isLoading } = useListNotes({ page, limit: 20, ...(search && { search }) });
+  const handleFileUpload = async (file: File) => {
+    setIsUploading(true);
+    setUploadProgress(10);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          setUploadProgress(30);
+          const raw = e.target?.result as string;
+          const base64Content = raw.split(',')[1] || raw;
+
+          setUploadProgress(50);
+          const uploadRes = await customFetch('/api/v1/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: file.name,
+              mimeType: file.type || 'application/octet-stream',
+              fileData: base64Content,
+            }),
+          }) as any;
+
+          setUploadProgress(90);
+          setForm(f => ({
+            ...f,
+            fileUrl: uploadRes.fileUrl,
+            size: String(uploadRes.fileSize || file.size),
+            type: file.name.endsWith('.pdf') ? 'pdf' : 
+                  file.name.endsWith('.docx') ? 'docx' : 
+                  file.name.endsWith('.ppt') || file.name.endsWith('.pptx') ? 'ppt' : 
+                  file.type.startsWith('video/') ? 'video' : 
+                  file.type.startsWith('image/') ? 'image' : f.type,
+          }));
+          toast({ title: 'File uploaded successfully' });
+        } catch (err: any) {
+          const msg = err.message || String(err);
+          // Standardized warning if not configured
+          if (msg.includes("not configured") || msg.includes("503")) {
+            toast({ title: 'Upload failed', description: 'Storage provider is not configured.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
+          }
+        } finally {
+          setIsUploading(false);
+          setUploadProgress(0);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err.message || String(err), variant: 'destructive' });
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const { data, isLoading } = useListNotes({ page, limit: 20 });
   const { data: subjects } = useListSubjects();
   const create = useCreateNote();
   const remove = useDeleteNote();
 
-  const notes = data?.data ?? [];
+  const allNotes = data?.data ?? [];
+  const notes = search
+    ? allNotes.filter(n => n.title.toLowerCase().includes(search.toLowerCase()))
+    : allNotes;
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / 20);
 
@@ -229,6 +290,64 @@ export default function AdminNotes() {
                 </Select>
               </div>
             </div>
+            {/* Drag and Drop File Upload Area */}
+            <div className="space-y-1.5">
+              <Label>File Upload</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.doc,.ppt,.pptx,image/*,video/*"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              />
+              <div
+                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-muted/30 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleFileUpload(file);
+                }}
+              >
+                {isUploading ? (
+                  <div className="space-y-2">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                    <p className="text-xs font-medium text-muted-foreground">Uploading: {uploadProgress}%</p>
+                    <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                  </div>
+                ) : form.fileUrl ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <span className="text-xs font-medium line-clamp-1 max-w-[200px]">{form.fileUrl}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setForm(f => ({ ...f, fileUrl: '', size: '0' }));
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
+                    <p className="text-xs font-medium">Drag & drop or click to upload</p>
+                    <p className="text-[10px] text-muted-foreground">PDF, DOCX, PPT, Image, Video</p>
+                  </>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>File URL *</Label>
               <Input value={form.fileUrl} onChange={e => setForm(f => ({ ...f, fileUrl: e.target.value }))} placeholder="https://…" />

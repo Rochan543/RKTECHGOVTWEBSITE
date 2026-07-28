@@ -46,6 +46,8 @@ export default function ExamEngine() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [sectionTimeLeft, setSectionTimeLeft] = useState<number | null>(null);
+  const [questionTimeLeft, setQuestionTimeLeft] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
@@ -54,17 +56,22 @@ export default function ExamEngine() {
   // Timer tracking per question
   const questionStartTimeRef = useRef<number>(Date.now());
   const engineRef = useRef<HTMLDivElement>(null);
+  const isInitialLoadRef = useRef(true);
 
   const { data: session, isLoading } = useGetSession(sessionId, {
     query: { 
       enabled: !!sessionId, 
       queryKey: getGetSessionQueryKey(sessionId),
-      refetchOnWindowFocus: false, // Don't refetch when clicking back in to avoid glitches
+      refetchOnWindowFocus: false,
     }
   });
 
   const submitAnswer = useSubmitAnswer();
   const submitSession = useSubmitSession();
+
+  // Active section helper
+  const currentQ = session?.questions[currentIndex];
+  const activeSection = session && currentQ ? session.sections.find((s: any) => s.id === currentQ.sectionId) : null;
 
   // Initialize time and local state
   useEffect(() => {
@@ -85,17 +92,142 @@ export default function ExamEngine() {
     }
   }, [session, timeLeft]);
 
+  // Initialize and track sectional timer
+  useEffect(() => {
+    if (!session || !activeSection || session.status !== 'in_progress') {
+      setSectionTimeLeft(null);
+      return;
+    }
+
+    if (activeSection.durationMinutes) {
+      const sectionStorageKey = `section_start_${sessionId}_${activeSection.id}`;
+      let sectionStart = localStorage.getItem(sectionStorageKey);
+      if (!sectionStart) {
+        sectionStart = String(Date.now());
+        localStorage.setItem(sectionStorageKey, sectionStart);
+      }
+      
+      const elapsed = Math.floor((Date.now() - parseInt(sectionStart, 10)) / 1000);
+      const limit = activeSection.durationMinutes * 60;
+      const remaining = Math.max(0, limit - elapsed);
+      setSectionTimeLeft(remaining);
+    } else {
+      setSectionTimeLeft(null);
+    }
+  }, [session, activeSection?.id, sessionId]);
+
+  // Section Timer Ticker
+  useEffect(() => {
+    if (sectionTimeLeft === null || sectionTimeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setSectionTimeLeft((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleSectionEnd();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [sectionTimeLeft]);
+
+  const handleSectionEnd = () => {
+    if (!session || !activeSection) return;
+    toast({ title: `Section "${activeSection.name}" time expired!`, variant: "destructive" });
+    
+    // Find next section
+    const nextSec = session.sections.find((s: any) => s.order === activeSection.order + 1);
+    if (nextSec && activeSection.autoMove !== false) {
+      const nextQIndex = session.questions.findIndex((q: any) => q.sectionId === nextSec.id);
+      if (nextQIndex >= 0) {
+        setCurrentIndex(nextQIndex);
+        toast({ title: `Moving to Section: ${nextSec.name}` });
+        return;
+      }
+    }
+    
+    handleAutoSubmit();
+  };
+
+  // Initialize per-question timer
+  useEffect(() => {
+    if (session && session.questionTimerSeconds && session.status === 'in_progress') {
+      setQuestionTimeLeft(session.questionTimerSeconds);
+    } else {
+      setQuestionTimeLeft(null);
+    }
+  }, [session, currentIndex]);
+
+  // Question Timer Ticker
+  useEffect(() => {
+    if (questionTimeLeft === null || questionTimeLeft <= 0) return;
+
+    const timer = setInterval(() => {
+      setQuestionTimeLeft((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleQuestionEnd();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [questionTimeLeft]);
+
+  const handleQuestionEnd = () => {
+    if (!session) return;
+    toast({ title: "Question timer expired!", description: "Moving to next question...", variant: "default" });
+    
+    const status = localSelectedOption ? 'answered' : 'visited';
+    saveCurrentAnswer(status);
+
+    if (currentIndex + 1 < session.questions.length) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      handleAutoSubmit();
+    }
+  };
+
   // Update local selection when changing questions
   useEffect(() => {
     if (session?.questions && session.questions[currentIndex]) {
       const q = session.questions[currentIndex];
       setLocalSelectedOption(q.selectedOptionId || null);
       questionStartTimeRef.current = Date.now();
-      
-      // If it was not visited, mark it as visited (without sending to server until they leave)
-      // Actually typical pattern: just mark visited locally if needed, but we'll send it on next.
+      isInitialLoadRef.current = true;
     }
   }, [currentIndex, session]);
+
+  // Auto-Save Trigger on Selection Change
+  useEffect(() => {
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+    
+    if (session && session.autoSave !== false && session.status === 'in_progress') {
+      const q = session.questions[currentIndex];
+      if (q) {
+        const timeSpent = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+        submitAnswer.mutate({
+          id: sessionId,
+          data: {
+            questionId: q.questionId,
+            selectedOptionId: localSelectedOption,
+            status: localSelectedOption ? 'answered' : 'visited',
+            timeSpentSeconds: timeSpent
+          }
+        });
+      }
+    }
+  }, [localSelectedOption]);
 
   // Master Timer
   useEffect(() => {
@@ -250,6 +382,21 @@ export default function ExamEngine() {
   };
 
   const handleJumpToQuestion = (index: number) => {
+    if (session?.questionTimerSeconds) {
+      toast({ title: "Navigation Restricted", description: "Jumping questions is disabled in timed quiz mode.", variant: "destructive" });
+      return;
+    }
+
+    const targetQ = session?.questions[index];
+    const targetSection = session?.sections.find((s: any) => s.id === targetQ?.sectionId);
+    
+    if (activeSection && targetSection && targetSection.order < activeSection.order) {
+      if (activeSection.navigationRule === 'lock_previous') {
+        toast({ title: "Navigation Blocked", description: "This section is locked. You cannot return to previous sections.", variant: "destructive" });
+        return;
+      }
+    }
+
     // Save current as visited if not answered
     const currentQ = session?.questions[currentIndex];
     if (currentQ && currentQ.status === 'not_visited' && !localSelectedOption) {
@@ -321,6 +468,21 @@ export default function ExamEngine() {
         </div>
         
         <div className="flex items-center gap-6">
+          {activeSection && (
+            <div className="text-sm font-semibold px-3 py-1 bg-slate-800 rounded-md border border-slate-700 hidden sm:block">
+              Section: <span className="text-yellow-400">{activeSection.name}</span>
+            </div>
+          )}
+          
+          {sectionTimeLeft !== null && (
+            <div className="flex items-center gap-2 bg-purple-950 px-3 py-1.5 rounded-md border border-purple-800 animate-pulse">
+              <Clock className="h-4 w-4 text-purple-400" />
+              <span className="font-mono text-sm font-bold tracking-wider text-purple-200">
+                Sec Time: {formatTime(sectionTimeLeft).slice(3)}
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
             <Clock className={`h-4 w-4 ${timeLeft && timeLeft < 300 ? 'text-red-400 animate-pulse' : 'text-slate-300'}`} />
             <span className={`font-mono text-lg font-bold tracking-wider ${timeLeft && timeLeft < 300 ? 'text-red-400' : 'text-white'}`}>
@@ -335,9 +497,22 @@ export default function ExamEngine() {
         
         {/* Left Pane - Question Area */}
         <div className="flex-1 flex flex-col overflow-hidden border-r">
-          <div className="h-12 bg-muted/30 border-b flex items-center px-4 flex-shrink-0">
+          <div className="h-12 bg-muted/30 border-b flex items-center justify-between px-4 flex-shrink-0">
             <h3 className="font-semibold">Question {currentIndex + 1} of {session.questions.length}</h3>
+            {activeSection && <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded sm:hidden">Section: {activeSection.name}</span>}
           </div>
+
+          {questionTimeLeft !== null && session.questionTimerSeconds && (
+            <div className="w-full bg-slate-100 dark:bg-slate-900 h-4 flex-shrink-0 relative overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-1000 ${questionTimeLeft < 10 ? 'bg-red-500 animate-pulse' : 'bg-blue-600'}`}
+                style={{ width: `${(questionTimeLeft / session.questionTimerSeconds) * 100}%` }}
+              ></div>
+              <div className="absolute right-3 top-0.5 text-[10px] font-bold text-muted-foreground">
+                Question Timer: {questionTimeLeft}s remaining
+              </div>
+            </div>
+          )}
           
           <div className="flex-1 overflow-auto p-6 lg:p-10 scroll-smooth">
             <div className="max-w-4xl mx-auto">
@@ -382,7 +557,7 @@ export default function ExamEngine() {
               <Button 
                 variant="outline" 
                 onClick={handleClearResponse}
-                disabled={!localSelectedOption}
+                disabled={!localSelectedOption || !!session.questionTimerSeconds}
                 className="hidden sm:flex"
               >
                 Clear Response
@@ -390,6 +565,7 @@ export default function ExamEngine() {
               <Button 
                 variant="secondary" 
                 onClick={handleMarkForReview}
+                disabled={!!session.questionTimerSeconds}
                 className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"
               >
                 Mark for Review & Next
@@ -428,17 +604,23 @@ export default function ExamEngine() {
             <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-5 gap-2">
               {session.questions.map((q, i) => {
                 let sClass = statusColors[q.status];
-                // Override visual if currently active
                 const isActive = currentIndex === i;
+                
+                const targetQ = q;
+                const targetSection = session.sections.find((s: any) => s.id === targetQ.sectionId);
+                const isSectionLocked = activeSection && targetSection && targetSection.order < activeSection.order && activeSection.navigationRule === 'lock_previous';
+                const isQuizTimerLocked = !!session.questionTimerSeconds && i !== currentIndex;
+                const isLocked = isSectionLocked || isQuizTimerLocked;
                 
                 return (
                   <button
                     key={q.id}
-                    onClick={() => handleJumpToQuestion(i)}
+                    onClick={() => !isLocked && handleJumpToQuestion(i)}
+                    disabled={isLocked}
                     className={`
                       h-10 rounded-md font-medium text-sm border shadow-sm transition-all relative flex items-center justify-center
-                      ${sClass}
-                      ${isActive ? 'ring-2 ring-primary ring-offset-2 scale-110 z-10' : 'hover:opacity-80'}
+                      ${isLocked ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-50' : sClass}
+                      ${isActive ? 'ring-2 ring-primary ring-offset-2 scale-110 z-10' : !isLocked ? 'hover:opacity-80' : ''}
                     `}
                   >
                     {i + 1}

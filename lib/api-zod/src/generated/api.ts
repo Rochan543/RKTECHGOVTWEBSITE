@@ -272,7 +272,10 @@ export const CreateExamBody = zod.object({
   "positiveMarks": zod.number(),
   "negativeMarks": zod.number(),
   "categoryId": zod.number().nullish(),
-  "status": zod.enum(['draft', 'published']).optional()
+  "status": zod.enum(['draft', 'published']).optional(),
+  "scheduledAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "timezone": zod.string().nullish()
 })
 
 export const CreateExamResponse = zod.object({
@@ -339,7 +342,15 @@ export const UpdateExamBody = zod.object({
   "title": zod.string().nullish(),
   "description": zod.string().nullish(),
   "status": zod.union([zod.literal('draft'),zod.literal('published'),zod.literal('archived'),zod.literal(null)]).nullish(),
-  "durationMinutes": zod.number().nullish()
+  "durationMinutes": zod.number().nullish(),
+  "totalMarks": zod.number().nullish(),
+  "positiveMarks": zod.number().nullish(),
+  "negativeMarks": zod.number().nullish(),
+  "categoryId": zod.number().nullish(),
+  "type": zod.enum(['full_mock', 'mini_mock', 'topic_test', 'chapter_test', 'daily_quiz', 'weekly_quiz', 'pyq', 'sectional']).nullish(),
+  "scheduledAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "timezone": zod.string().nullish()
 })
 
 export const UpdateExamResponse = zod.object({

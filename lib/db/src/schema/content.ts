@@ -147,3 +147,20 @@ export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
 export type Achievement = typeof achievementsTable.$inferSelect;
 
 export type AuditLog = typeof auditLogsTable.$inferSelect;
+
+export const fileUploadsTable = pgTable("file_uploads", {
+  id: serial("id").primaryKey(),
+  fileUrl: text("file_url").notNull(),
+  publicId: text("public_id").notNull(),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  uploadedBy: integer("uploaded_by").references(() => usersTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export type FileUpload = typeof fileUploadsTable.$inferSelect;
+export type InsertFileUpload = typeof fileUploadsTable.$inferInsert;
+

@@ -20,53 +20,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    if (!storedToken) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Always fetch /auth/me on bootstrap so the role reflected in the UI
-    // is the current DB role — not a stale localStorage snapshot.
-    (customFetch('/api/v1/auth/me', { method: 'GET' }) as Promise<Response>)
-      .then(async (res) => {
-        if (!res.ok) {
-          // Token is invalid or user suspended — clear session
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          return;
-        }
-        const freshUser: User = await res.json();
-        setToken(storedToken);
-        setUser(freshUser);
-        // Keep localStorage in sync so next cold-start has a warm snapshot
-        localStorage.setItem('user', JSON.stringify(freshUser));
+    // Always fetch /auth/me on bootstrap to check active session cookie
+    customFetch('/api/v1/auth/me', { method: 'GET' })
+      .then((freshUser: any) => {
+        setToken("authenticated");
+        setUser(freshUser as User);
       })
       .catch(() => {
-        // Network error — fall back to cached user so offline-ish loads still work
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-          try {
-            setToken(storedToken);
-            setUser(JSON.parse(storedUser));
-          } catch { /* corrupt cache — leave logged out */ }
-        }
+        // Not logged in or network error
+        setToken(null);
+        setUser(null);
       })
       .finally(() => setIsLoading(false));
   }, []);
 
   const login = (newToken: string, newUser: User) => {
-    setToken(newToken);
+    setToken(newToken || "authenticated");
     setUser(newUser);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    customFetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
   };
 
   return (

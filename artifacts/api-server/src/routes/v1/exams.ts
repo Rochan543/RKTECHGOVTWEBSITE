@@ -106,7 +106,8 @@ router.get("/v1/exams", optionalAuth, async (req: AuthRequest, res): Promise<voi
 });
 
 router.post("/v1/exams", requireAdmin, async (req, res): Promise<void> => {
-  const parsed = CreateExamBody.safeParse(req.body);
+  const { sections, questionTimerSeconds, autoSubmit, autoSave, ...bodyRest } = req.body;
+  const parsed = CreateExamBody.safeParse(bodyRest);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -121,7 +122,31 @@ router.post("/v1/exams", requireAdmin, async (req, res): Promise<void> => {
     negativeMarks: parsed.data.negativeMarks,
     categoryId: parsed.data.categoryId ?? null,
     status: parsed.data.status ?? "draft",
+    scheduledAt: parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null,
+    endsAt: parsed.data.endsAt ? new Date(parsed.data.endsAt) : null,
+    timezone: parsed.data.timezone ?? "UTC",
+    questionTimerSeconds: questionTimerSeconds ? parseInt(questionTimerSeconds) : null,
+    autoSubmit: autoSubmit !== false,
+    autoSave: autoSave !== false,
   }).returning();
+
+  if (Array.isArray(sections)) {
+    for (const sec of sections) {
+      await db.insert(examSectionsTable).values({
+        examId: exam.id,
+        name: sec.name,
+        durationMinutes: sec.durationMinutes ? parseInt(sec.durationMinutes) : null,
+        order: parseInt(sec.order) || 1,
+        subjectId: sec.subjectId ? parseInt(sec.subjectId) : null,
+        isMandatory: sec.isMandatory !== false,
+        positiveMarks: sec.positiveMarks ? parseFloat(sec.positiveMarks) : null,
+        negativeMarks: sec.negativeMarks ? parseFloat(sec.negativeMarks) : null,
+        navigationRule: sec.navigationRule || "lock_previous",
+        autoMove: sec.autoMove !== false,
+      });
+    }
+  }
+
   res.status(201).json({ ...exam, totalQuestions: 0, attemptCount: 0, averageScore: null, categoryName: null });
 });
 
@@ -149,6 +174,11 @@ router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise
       durationMinutes: sec.durationMinutes ?? null,
       order: sec.order,
       subjectId: sec.subjectId ?? null,
+      isMandatory: sec.isMandatory,
+      positiveMarks: sec.positiveMarks,
+      negativeMarks: sec.negativeMarks,
+      navigationRule: sec.navigationRule,
+      autoMove: sec.autoMove,
     };
   }));
 
@@ -168,6 +198,9 @@ router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise
     attemptCount: aCount?.count ?? 0,
     averageScore: null,
     sections: sectionsWithCount,
+    questionTimerSeconds: exam.questionTimerSeconds,
+    autoSubmit: exam.autoSubmit,
+    autoSave: exam.autoSave,
     createdAt: exam.createdAt,
   });
 });
@@ -178,7 +211,8 @@ router.put("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const parsed = UpdateExamBody.safeParse(req.body);
+  const { sections, questionTimerSeconds, autoSubmit, autoSave, ...bodyRest } = req.body;
+  const parsed = UpdateExamBody.safeParse(bodyRest);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -188,12 +222,59 @@ router.put("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
   if (parsed.data.description != null) updateData.description = parsed.data.description;
   if (parsed.data.status != null) updateData.status = parsed.data.status;
   if (parsed.data.durationMinutes != null) updateData.durationMinutes = parsed.data.durationMinutes;
+  if (parsed.data.totalMarks != null) updateData.totalMarks = parsed.data.totalMarks;
+  if (parsed.data.positiveMarks != null) updateData.positiveMarks = parsed.data.positiveMarks;
+  if (parsed.data.negativeMarks != null) updateData.negativeMarks = parsed.data.negativeMarks;
+  if (parsed.data.categoryId !== undefined) updateData.categoryId = parsed.data.categoryId ?? null;
+  if (parsed.data.type != null) updateData.type = parsed.data.type;
+  if (parsed.data.scheduledAt !== undefined) updateData.scheduledAt = parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null;
+  if (parsed.data.endsAt !== undefined) updateData.endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
+  if (parsed.data.timezone != null) updateData.timezone = parsed.data.timezone;
+  if (questionTimerSeconds !== undefined) updateData.questionTimerSeconds = questionTimerSeconds ? parseInt(questionTimerSeconds) : null;
+  if (autoSubmit !== undefined) updateData.autoSubmit = autoSubmit !== false;
+  if (autoSave !== undefined) updateData.autoSave = autoSave !== false;
 
   const [exam] = await db.update(examsTable).set(updateData).where(eq(examsTable.id, params.data.id)).returning();
   if (!exam) {
     res.status(404).json({ error: "Exam not found" });
     return;
   }
+
+  if (Array.isArray(sections)) {
+    const existingSections = await db.select().from(examSectionsTable).where(eq(examSectionsTable.examId, exam.id));
+    const sectionIdsInPayload = sections.map(s => s.id).filter(Boolean);
+    
+    // 1. Delete sections that are not in the payload
+    for (const existing of existingSections) {
+      if (!sectionIdsInPayload.includes(existing.id)) {
+        await db.update(examQuestionsTable).set({ sectionId: null }).where(eq(examQuestionsTable.sectionId, existing.id));
+        await db.delete(examSectionsTable).where(eq(examSectionsTable.id, existing.id));
+      }
+    }
+    
+    // 2. Create or Update sections in the payload
+    for (const sec of sections) {
+      const secData = {
+        examId: exam.id,
+        name: sec.name,
+        durationMinutes: sec.durationMinutes ? parseInt(sec.durationMinutes) : null,
+        order: parseInt(sec.order) || 1,
+        subjectId: sec.subjectId ? parseInt(sec.subjectId) : null,
+        isMandatory: sec.isMandatory !== false,
+        positiveMarks: sec.positiveMarks ? parseFloat(sec.positiveMarks) : null,
+        negativeMarks: sec.negativeMarks ? parseFloat(sec.negativeMarks) : null,
+        navigationRule: sec.navigationRule || "lock_previous",
+        autoMove: sec.autoMove !== false,
+      };
+      
+      if (sec.id) {
+        await db.update(examSectionsTable).set(secData).where(eq(examSectionsTable.id, sec.id));
+      } else {
+        await db.insert(examSectionsTable).values(secData);
+      }
+    }
+  }
+
   res.json({ ...exam, totalQuestions: 0, attemptCount: 0, averageScore: null, categoryName: null });
 });
 

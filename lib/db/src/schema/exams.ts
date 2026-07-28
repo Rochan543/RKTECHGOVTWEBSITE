@@ -5,6 +5,7 @@ import {
   timestamp,
   real,
   integer,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -38,6 +39,12 @@ export const examsTable = pgTable("exams", {
   positiveMarks: real("positive_marks").notNull().default(2),
   negativeMarks: real("negative_marks").notNull().default(0.5),
   categoryId: integer("category_id").references(() => examCategoriesTable.id),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  timezone: text("timezone").default("UTC"),
+  questionTimerSeconds: integer("question_timer_seconds"),
+  autoSubmit: boolean("auto_submit").notNull().default(true),
+  autoSave: boolean("auto_save").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -56,6 +63,11 @@ export const examSectionsTable = pgTable("exam_sections", {
   durationMinutes: integer("duration_minutes"),
   order: integer("order").notNull().default(1),
   subjectId: integer("subject_id").references(() => subjectsTable.id),
+  isMandatory: boolean("is_mandatory").notNull().default(true),
+  positiveMarks: real("positive_marks"),
+  negativeMarks: real("negative_marks"),
+  navigationRule: text("navigation_rule", { enum: ["lock_previous", "allow_previous"] }).notNull().default("lock_previous"),
+  autoMove: boolean("auto_move").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

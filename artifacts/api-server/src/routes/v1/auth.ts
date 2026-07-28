@@ -47,6 +47,12 @@ router.post("/v1/auth/register", async (req, res): Promise<void> => {
       status: "active",
     }).returning();
     const token = signToken({ userId: user.id, role: user.role });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
     res.status(201).json({
       token,
       user: {
@@ -89,6 +95,12 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
       return;
     }
     const token = signToken({ userId: user.id, role: user.role });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
     res.json({
       token,
       user: {
@@ -111,6 +123,11 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
 });
 
 router.post("/v1/auth/logout", (_req, res): void => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  });
   res.json({ message: "Logged out" });
 });
 

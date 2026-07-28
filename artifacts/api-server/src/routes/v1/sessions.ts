@@ -272,6 +272,7 @@ async function buildSessionDetail(sessionId: number) {
     return {
       id: eq_.id,
       questionId: eq_.questionId,
+      sectionId: eq_.sectionId,
       text: q?.text ?? "",
       type: q?.type ?? "single_choice",
       imageUrl: q?.imageUrl ?? null,
@@ -284,7 +285,6 @@ async function buildSessionDetail(sessionId: number) {
   }));
 
   const sectionDetails = await Promise.all(sections.map(async (sec) => {
-    const [sq] = await db.select().from(examQuestionsTable).where(eq(examQuestionsTable.sectionId, sec.id));
     return {
       id: sec.id,
       name: sec.name,
@@ -292,6 +292,11 @@ async function buildSessionDetail(sessionId: number) {
       durationMinutes: sec.durationMinutes ?? null,
       order: sec.order,
       subjectId: sec.subjectId ?? null,
+      isMandatory: sec.isMandatory,
+      positiveMarks: sec.positiveMarks,
+      negativeMarks: sec.negativeMarks,
+      navigationRule: sec.navigationRule,
+      autoMove: sec.autoMove,
     };
   }));
 
@@ -305,7 +310,10 @@ async function buildSessionDetail(sessionId: number) {
     durationMinutes: exam?.durationMinutes ?? 60,
     currentSectionIndex: session.currentSectionIndex ?? 0,
     questions: questions.sort((a, b) => a.order - b.order),
-    sections: sectionDetails,
+    sections: sectionDetails.sort((a, b) => a.order - b.order),
+    questionTimerSeconds: exam?.questionTimerSeconds ?? null,
+    autoSubmit: exam?.autoSubmit !== false,
+    autoSave: exam?.autoSave !== false,
   };
 }
 
