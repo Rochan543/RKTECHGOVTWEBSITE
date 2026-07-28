@@ -1,0 +1,768 @@
+This is a great idea. Instead of building a simple website, I recommend building a **production-ready Online Examination Platform** that can scale from a few students to **100,000+ users**.
+
+Below is a master prompt you can use with Claude Code, GPT-5, Cursor, Windsurf, Lovable, Replit AI, or any coding AI.
+
+---
+
+# 🚀 MASTER PROMPT – SSC Online Examination Platform (Production Ready)
+
+## Project Overview
+
+Build a **production-grade Online Examination Platform** for SSC, Banking, Railway, UPSC, State PSC, and other competitive exams.
+
+The platform should have **three portals**:
+
+1. Student Portal
+2. Admin Portal
+3. Super Admin Portal
+
+The UI must be modern, responsive, minimal, and fast.
+
+Use a clean design similar to Testbook, Oliveboard, PracticeMock, and Adda247, but create an original UI.
+
+---
+
+# Technology Stack
+
+Frontend
+
+* React 19
+* TypeScript
+* Vite
+* Tailwind CSS
+* ShadCN UI
+* React Router
+* React Query
+* Framer Motion
+
+Backend
+
+* Node.js
+* Express.js
+* PostgreSQL
+* Prisma ORM
+* JWT Authentication
+* Redis
+* BullMQ
+
+Storage
+
+* Cloudinary
+* AWS S3
+
+Authentication
+
+* Email Login
+* Google Login
+* OTP Login
+
+Deployment
+
+* Docker
+* Nginx
+* GitHub Actions
+* Railway/Render
+* Cloudflare
+
+---
+
+# Student Features
+
+## Authentication
+
+* Login
+* Register
+* Forgot Password
+* Google Login
+* OTP Login
+* Email Verification
+
+---
+
+# Dashboard
+
+Dashboard should show
+
+Welcome
+
+Upcoming Tests
+
+Upcoming Quizzes
+
+Daily Current Affairs
+
+Daily GK
+
+Daily GS
+
+Latest Notifications
+
+Today's Study Target
+
+Today's Revision
+
+Completed Tests
+
+Completed Quizzes
+
+Average Score
+
+Overall Accuracy
+
+Current Rank
+
+Leaderboard
+
+Weak Subjects
+
+Strong Subjects
+
+Daily Motivation
+
+---
+
+# Exam Categories
+
+SSC CGL
+
+SSC CHSL
+
+SSC MTS
+
+SSC CPO
+
+SSC GD
+
+Bank PO
+
+Bank Clerk
+
+RRB NTPC
+
+RRB Group D
+
+UPSC
+
+State PSC
+
+Police
+
+Teaching
+
+Custom Exams
+
+---
+
+# Test Types
+
+Full Length Mock
+
+Mini Mock
+
+Topic Test
+
+Chapter Test
+
+Daily Quiz
+
+Weekly Quiz
+
+Previous Year Papers
+
+Sectional Tests
+
+---
+
+# Exam Engine
+
+Professional Exam Interface
+
+Full Screen
+
+Responsive
+
+No Scrolling
+
+Fixed Timer
+
+Question Palette
+
+Question Navigation
+
+Question Status
+
+Answered
+
+Not Answered
+
+Marked
+
+Marked + Answered
+
+Visited
+
+Not Visited
+
+---
+
+# Sectional Timing
+
+Example
+
+English
+
+20 minutes
+
+Automatically switches to
+
+Reasoning
+
+20 minutes
+
+Automatically switches to
+
+Maths
+
+30 minutes
+
+Student cannot return to previous section.
+
+---
+
+# Overall Timer
+
+Total Exam Timer
+
+Auto Submit
+
+Timer Warning
+
+10 min left
+
+5 min left
+
+1 min left
+
+---
+
+# Every Question Timer
+
+Every question should record
+
+Time Spent
+
+Example
+
+Question 1
+
+38 sec
+
+Question 2
+
+72 sec
+
+Question 3
+
+14 sec
+
+Question-wise analytics should be available after exam.
+
+---
+
+# Question Types
+
+Single Choice
+
+Multiple Choice
+
+True False
+
+Integer
+
+Numerical
+
+Assertion Reason
+
+Match Following
+
+Paragraph Based
+
+Image Questions
+
+---
+
+# Question Display
+
+Question
+
+Images
+
+Tables
+
+Math Equations
+
+Code Blocks
+
+Rich Text
+
+Options
+
+A
+
+B
+
+C
+
+D
+
+Large readable fonts
+
+Professional spacing
+
+Dark Mode
+
+---
+
+# PDF Question Import
+
+Admin uploads
+
+PDF
+
+DOCX
+
+TXT
+
+Excel
+
+CSV
+
+JSON
+
+Markdown
+
+System should parse and create questions automatically.
+
+---
+
+# Notes Import
+
+Admin uploads
+
+PDF Notes
+
+DOCX
+
+PowerPoint
+
+Images
+
+Markdown
+
+ZIP
+
+Students should view them inside the portal with a built-in viewer.
+
+---
+
+# Daily GK
+
+Daily Current Affairs
+
+Daily Quiz
+
+Daily Notes
+
+Daily PDFs
+
+Daily Videos
+
+---
+
+# Analytics
+
+Student
+
+Subject-wise Accuracy
+
+Topic-wise Accuracy
+
+Time Analysis
+
+Speed
+
+Weak Topics
+
+Strong Topics
+
+Improvement
+
+Rank
+
+Percentile
+
+---
+
+# Leaderboard
+
+Weekly
+
+Monthly
+
+Overall
+
+Friends
+
+---
+
+# User Profile
+
+Profile
+
+Photo
+
+Achievements
+
+Badges
+
+Certificates
+
+Rank
+
+Subscription
+
+---
+
+# Admin Panel
+
+Admin Dashboard
+
+Students
+
+Questions
+
+Subjects
+
+Topics
+
+Mock Tests
+
+Quizzes
+
+PYQs
+
+Notes
+
+PDF Upload
+
+Video Upload
+
+Announcements
+
+Notifications
+
+Coupons
+
+Reports
+
+Analytics
+
+Payments
+
+Support Tickets
+
+---
+
+# Question Management
+
+Rich Text Editor
+
+Image Upload
+
+Math Formula Editor
+
+Difficulty
+
+Easy
+
+Medium
+
+Hard
+
+Negative Marks
+
+Positive Marks
+
+Topic
+
+Subject
+
+Explanation
+
+Solution
+
+Hints
+
+---
+
+# PDF Import
+
+Upload PDF
+
+OCR
+
+Extract Questions
+
+Review
+
+Approve
+
+Publish
+
+---
+
+# Quiz Builder
+
+Drag and Drop
+
+Question Bank
+
+Auto Random
+
+Negative Marking
+
+Timer
+
+Section Timer
+
+Shuffle
+
+---
+
+# Notes Management
+
+Upload
+
+PDF
+
+Word
+
+PowerPoint
+
+Images
+
+ZIP
+
+Students should open them directly without downloading if desired.
+
+---
+
+# Notifications
+
+Push
+
+Email
+
+SMS
+
+WhatsApp
+
+---
+
+# Student Management
+
+Search
+
+Filter
+
+Suspend
+
+Activate
+
+Reset Password
+
+View Performance
+
+---
+
+# Reports
+
+Revenue
+
+Active Users
+
+Top Exams
+
+Top Students
+
+Top Questions
+
+Weak Topics
+
+---
+
+# Exam Security
+
+This is extremely important.
+
+### Prevent Cheating
+
+Disable Right Click
+
+Disable Copy
+
+Disable Paste
+
+Disable Print
+
+Disable Developer Shortcuts
+
+Block F12
+
+Block Ctrl+Shift+I
+
+Block Ctrl+Shift+J
+
+Block Ctrl+Shift+C
+
+Block Ctrl+U
+
+Block Ctrl+S
+
+Detect Tab Switch
+
+Detect Window Blur
+
+Detect Multiple Monitors (where browser capabilities allow)
+
+Detect Full Screen Exit
+
+Auto Warning
+
+Auto Submit after multiple violations
+
+Screenshot Detection (where browser/platform APIs allow)
+
+Face Detection (Optional AI)
+
+Browser Lock
+
+Question Watermark
+
+Random Questions
+
+Random Options
+
+Encrypted API
+
+JWT
+
+HTTPS
+
+Rate Limiting
+
+Captcha
+
+Session Timeout
+
+Auto Save Every 5 Seconds
+
+Reconnect Automatically
+
+---
+
+# Results
+
+Instant Result
+
+Detailed Analysis
+
+Correct
+
+Wrong
+
+Skipped
+
+Time Per Question
+
+Topic Analysis
+
+Section Analysis
+
+Download Result PDF
+
+---
+
+# UI Design
+
+Modern
+
+Minimal
+
+Professional
+
+Rounded Cards
+
+Beautiful Shadows
+
+Dark Mode
+
+Light Mode
+
+Blue
+
+Purple
+
+Glassmorphism
+
+Smooth Animations
+
+Mobile Responsive
+
+---
+
+# Performance
+
+Lazy Loading
+
+Image Optimization
+
+Code Splitting
+
+Caching
+
+Virtual Lists
+
+SSR Friendly
+
+SEO Optimized
+
+Accessibility
+
+---
+
+# Deliverables
+
+Build a production-ready application with:
+
+* Clean folder structure
+* Scalable architecture
+* Reusable components
+* Secure authentication
+* REST APIs
+* Database schema
+* Admin portal
+* Student portal
+* Exam engine
+* Analytics dashboard
+* PDF/Notes management
+* Responsive UI
+* Proper error handling
+* Loading states
+* Unit tests
+* API documentation
+* Docker support
+* Environment configuration
+* Production deployment guide
+
+**Important:** Do not generate placeholder pages or dummy implementations. Every feature should be fully functional, modular, production-ready, and designed to scale. Prioritize security, performance, accessibility, maintainability, and a clean user experience throughout the application.

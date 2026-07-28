@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "SSC Exam Platform"
+version = "1.0.0"
+id = "artifacts/exam-platform"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22619
+
+[services.development]
+run = "pnpm --filter @workspace/exam-platform run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/exam-platform", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/exam-platform/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22619"
+BASE_PATH = "/"
