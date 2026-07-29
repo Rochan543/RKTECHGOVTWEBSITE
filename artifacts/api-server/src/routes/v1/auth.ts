@@ -47,10 +47,11 @@ router.post("/v1/auth/register", async (req, res): Promise<void> => {
       status: "active",
     }).returning();
     const token = signToken({ userId: user.id, role: user.role });
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
     res.status(201).json({
@@ -95,10 +96,11 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
       return;
     }
     const token = signToken({ userId: user.id, role: user.role });
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
     res.json({
@@ -123,10 +125,11 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
 });
 
 router.post("/v1/auth/logout", (_req, res): void => {
+  const isProd = process.env.NODE_ENV === "production";
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
   });
   res.json({ message: "Logged out" });
 });
