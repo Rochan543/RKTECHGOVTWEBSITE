@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import bcrypt from "bcrypt";
 import { db, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { signToken, requireAuth, type AuthRequest } from "../../middlewares/auth";
+import { signToken, requireAuth, type AuthRequest, getCookieOptions } from "../../middlewares/auth";
 import {
   RegisterBody,
   LoginBody,
@@ -47,13 +47,7 @@ router.post("/v1/auth/register", async (req, res): Promise<void> => {
       status: "active",
     }).returning();
     const token = signToken({ userId: user.id, role: user.role });
-    const isProd = process.env.NODE_ENV === "production";
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("token", token, getCookieOptions(req));
     res.status(201).json({
       token,
       user: {
@@ -96,13 +90,7 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
       return;
     }
     const token = signToken({ userId: user.id, role: user.role });
-    const isProd = process.env.NODE_ENV === "production";
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("token", token, getCookieOptions(req));
     res.json({
       token,
       user: {
@@ -124,13 +112,10 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
   }
 });
 
-router.post("/v1/auth/logout", (_req, res): void => {
-  const isProd = process.env.NODE_ENV === "production";
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
-  });
+router.post("/v1/auth/logout", (req, res): void => {
+  const cookieOpts = getCookieOptions(req);
+  const { maxAge, ...clearOpts } = cookieOpts;
+  res.clearCookie("token", clearOpts);
   res.json({ message: "Logged out" });
 });
 

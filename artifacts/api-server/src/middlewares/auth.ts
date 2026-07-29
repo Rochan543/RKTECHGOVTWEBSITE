@@ -93,3 +93,17 @@ export async function requireSuperAdmin(req: AuthRequest, res: Response, next: N
     next();
   });
 }
+
+export function getCookieOptions(req: Request) {
+  const host = req.headers.host || "";
+  const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+
+  return {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: isLocal ? ("lax" as const) : ("none" as const),
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: "/",
+  };
+}
+
