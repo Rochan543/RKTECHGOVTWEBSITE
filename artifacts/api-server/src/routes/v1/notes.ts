@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db, notesTable, subjectsTable, examCategoriesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/auth";
 import { ListNotesQueryParams, CreateNoteBody, GetNoteParams, DeleteNoteParams } from "@workspace/api-zod";
 import { z } from "zod";
+import { createNotificationForStudents, createNotificationForAdmins } from "../../lib/notifications";
 
 const router: IRouter = Router();
 
@@ -34,13 +35,56 @@ router.get("/v1/notes", async (req, res): Promise<void> => {
     return;
   }
   const { page = 1, limit = 20, subjectId, categoryId } = params.data;
+  const offset = (page - 1) * limit;
 
-  let notes = await db.select().from(notesTable);
-  if (subjectId) notes = notes.filter(n => n.subjectId === subjectId);
-  if (categoryId) notes = notes.filter(n => n.categoryId === categoryId);
-  const total = notes.length;
-  const paged = notes.slice((page - 1) * limit, page * limit);
-  const data = await Promise.all(paged.map(buildNote));
+  const conditions = [];
+  if (subjectId) {
+    conditions.push(eq(notesTable.subjectId, subjectId));
+  }
+  if (categoryId) {
+    conditions.push(eq(notesTable.categoryId, categoryId));
+  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const paged = await db.select({
+    id: notesTable.id,
+    title: notesTable.title,
+    description: notesTable.description,
+    type: notesTable.type,
+    fileUrl: notesTable.fileUrl,
+    thumbnailUrl: notesTable.thumbnailUrl,
+    size: notesTable.size,
+    subjectId: notesTable.subjectId,
+    categoryId: notesTable.categoryId,
+    subjectName: subjectsTable.name,
+    downloadCount: notesTable.downloadCount,
+    createdAt: notesTable.createdAt,
+  })
+    .from(notesTable)
+    .leftJoin(subjectsTable, eq(notesTable.subjectId, subjectsTable.id))
+    .where(whereClause)
+    .orderBy(desc(notesTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const [{ count: total }] = await db.select({ count: count() })
+    .from(notesTable)
+    .where(whereClause);
+
+  const data = paged.map(n => ({
+    id: n.id,
+    title: n.title,
+    description: n.description ?? null,
+    type: n.type,
+    fileUrl: n.fileUrl,
+    thumbnailUrl: n.thumbnailUrl ?? null,
+    size: n.size,
+    subjectId: n.subjectId ?? null,
+    categoryId: n.categoryId ?? null,
+    subjectName: n.subjectName ?? null,
+    downloadCount: n.downloadCount ?? 0,
+    createdAt: n.createdAt,
+  }));
 
   res.json({ data, total, page, limit });
 });
@@ -61,6 +105,11 @@ router.post("/v1/notes", requireAdmin, async (req, res): Promise<void> => {
     subjectId: parsed.data.subjectId ?? null,
     categoryId: parsed.data.categoryId ?? null,
   }).returning();
+
+  // Trigger Notifications
+  await createNotificationForAdmins("New Study Material", `Study material '${note.title}' has been uploaded.`, "system");
+  await createNotificationForStudents("New Study Material", `New study material '${note.title}' has been uploaded. Check it out in Study Material!`, "announcement", "/notes");
+
   res.status(201).json(await buildNote(note));
 });
 

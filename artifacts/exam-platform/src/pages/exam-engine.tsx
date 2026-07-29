@@ -8,33 +8,34 @@ import {
   customFetch,
 } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, BookmarkIcon, List, EyeOff } from 'lucide-react';
+import { Clock, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, BookmarkIcon, List, EyeOff, Calculator, X, Shield } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { optimizeCloudinaryUrl } from '@/lib/utils';
 
 type ViolationType = 'tab_switch' | 'window_blur' | 'fullscreen_exit' | 'context_menu' | 'copy_attempt';
 
 async function recordViolation(sessionId: number, type: ViolationType): Promise<{ autoSubmitted?: boolean; violationCount?: number }> {
   try {
-    const res = await customFetch(`/api/v1/sessions/${sessionId}/violations`, {
+    const data = await customFetch<{ autoSubmitted?: boolean; violationCount?: number }>(`/api/v1/sessions/${sessionId}/violations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type }),
-    }) as Response;
-    if (res.ok) return res.json() as Promise<{ autoSubmitted?: boolean; violationCount?: number }>;
+    });
+    return data || {};
   } catch { /* silent */ }
   return {};
 }
 
 // Status colors mapping
 const statusColors = {
-  not_visited: 'bg-muted text-muted-foreground border-muted-foreground/30',
-  visited: 'bg-background text-foreground border-destructive text-destructive', // Using red border for not answered (visited) as per typical SSC pattern
+  not_visited: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+  visited: 'bg-red-600 text-white border-red-600',
   answered: 'bg-green-600 text-white border-green-600',
-  marked: 'bg-purple-600 text-white border-purple-600',
-  marked_answered: 'bg-purple-600 text-white border-purple-600 after:content-[""] after:absolute after:-bottom-1 after:-right-1 after:w-3 after:h-3 after:bg-green-500 after:rounded-full after:border-2 after:border-background',
+  marked: 'bg-orange-500 text-white border-orange-500',
+  marked_answered: 'bg-purple-600 text-white border-purple-600',
 };
 
 export default function ExamEngine() {
@@ -52,6 +53,12 @@ export default function ExamEngine() {
   const [showWarning, setShowWarning] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [localSelectedOption, setLocalSelectedOption] = useState<number | null>(null);
+  const [violationCount, setViolationCount] = useState(0);
+  const [lastViolationType, setLastViolationType] = useState<ViolationType | null>(null);
+  const [maxViolations, setMaxViolations] = useState(5);
+  const [hasEntered, setHasEntered] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   // Timer tracking per question
   const questionStartTimeRef = useRef<number>(Date.now());
@@ -74,6 +81,20 @@ export default function ExamEngine() {
   const activeSection = session && currentQ ? session.sections.find((s: any) => s.id === currentQ.sectionId) : null;
 
   // Initialize time and local state
+  // Load initial violations count
+  useEffect(() => {
+    if (sessionId && session?.status === 'in_progress') {
+      customFetch(`/api/v1/sessions/${sessionId}/violations`)
+        .then((res: any) => {
+          if (res && typeof res.total === 'number') {
+            setViolationCount(res.total);
+            setMaxViolations(res.maxViolations || 5);
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  }, [sessionId, session?.status]);
+
   useEffect(() => {
     if (session && timeLeft === null && session.status === 'in_progress') {
       const started = new Date(session.startedAt).getTime();
@@ -83,14 +104,18 @@ export default function ExamEngine() {
       const remaining = Math.max(0, totalSeconds - elapsed);
       setTimeLeft(remaining);
       
-      // Try to enter fullscreen
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(e => {
-          console.error("Fullscreen request failed:", e);
-        });
-      }
+      // Fullscreen requested on user gesture overlay
+      setIsFullscreen(true);
     }
   }, [session, timeLeft]);
+
+  // Mobile detection for calculator layout
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Initialize and track sectional timer
   useEffect(() => {
@@ -206,6 +231,35 @@ export default function ExamEngine() {
     }
   }, [currentIndex, session]);
 
+  // Automatically mark current question as visited if it is not_visited
+  useEffect(() => {
+    if (session && session.status === 'in_progress' && hasEntered) {
+      const q = session.questions[currentIndex];
+      if (q && q.status === 'not_visited') {
+        queryClient.setQueryData(getGetSessionQueryKey(sessionId), (old: any) => {
+          if (!old) return old;
+          const updatedQs = [...old.questions];
+          updatedQs[currentIndex] = {
+            ...updatedQs[currentIndex],
+            status: 'visited'
+          };
+          return { ...old, questions: updatedQs };
+        });
+
+        const timeSpent = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+        submitAnswer.mutate({
+          id: sessionId,
+          data: {
+            questionId: q.questionId,
+            selectedOptionId: q.selectedOptionId || null,
+            status: 'visited',
+            timeSpentSeconds: timeSpent
+          }
+        });
+      }
+    }
+  }, [currentIndex, session, hasEntered]);
+
   // Auto-Save Trigger on Selection Change
   useEffect(() => {
     if (isInitialLoadRef.current) {
@@ -217,12 +271,25 @@ export default function ExamEngine() {
       const q = session.questions[currentIndex];
       if (q) {
         const timeSpent = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+        const status = localSelectedOption ? 'answered' : 'visited';
+        
+        queryClient.setQueryData(getGetSessionQueryKey(sessionId), (old: any) => {
+          if (!old) return old;
+          const updatedQs = [...old.questions];
+          updatedQs[currentIndex] = {
+            ...updatedQs[currentIndex],
+            status: status,
+            selectedOptionId: localSelectedOption
+          };
+          return { ...old, questions: updatedQs };
+        });
+
         submitAnswer.mutate({
           id: sessionId,
           data: {
             questionId: q.questionId,
             selectedOptionId: localSelectedOption,
-            status: localSelectedOption ? 'answered' : 'visited',
+            status: status,
             timeSpentSeconds: timeSpent
           }
         });
@@ -258,12 +325,32 @@ export default function ExamEngine() {
   // Anti-cheat violation handler ref — set after handleAutoSubmit is declared below
   const handleViolationAutoSubmitRef = useRef<() => void>(() => {});
 
+  const triggerRecordViolation = useCallback((type: ViolationType) => {
+    recordViolation(sessionId, type).then((r: any) => {
+      // Invalidate dashboard stats and user stats immediately
+      queryClient.invalidateQueries({ queryKey: ['/api/v1/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v1/users'] });
+
+      if (r.autoSubmitted) {
+        handleViolationAutoSubmitRef.current();
+      } else {
+        if (r.violationCount !== undefined) {
+          setViolationCount(r.violationCount);
+          setMaxViolations(r.maxViolations || 5);
+          setLastViolationType(type);
+          setShowWarning(true);
+        }
+      }
+    });
+  }, [sessionId, queryClient]);
+
   // Prevent right click and copy
   useEffect(() => {
     const preventDefault = (e: Event) => {
       e.preventDefault();
       if (sessionId && session?.status === 'in_progress') {
-        recordViolation(sessionId, e.type === 'contextmenu' ? 'context_menu' : 'copy_attempt');
+        const type = e.type === 'contextmenu' ? 'context_menu' : 'copy_attempt';
+        triggerRecordViolation(type as ViolationType);
       }
     };
     document.addEventListener('contextmenu', preventDefault);
@@ -272,7 +359,7 @@ export default function ExamEngine() {
       document.removeEventListener('contextmenu', preventDefault);
       document.removeEventListener('copy', preventDefault);
     };
-  }, [sessionId, session?.status]);
+  }, [sessionId, session?.status, triggerRecordViolation]);
 
   const handleAutoSubmit = useCallback(() => {
     if (!session || session.status !== 'in_progress') return;
@@ -280,11 +367,15 @@ export default function ExamEngine() {
     submitSession.mutate(
       { id: sessionId },
       {
-        onSuccess: () => setLocation(`/results`),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['/api/v1/dashboard'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/v1/users'] });
+          setLocation(`/results`);
+        },
         onError: () => setLocation(`/dashboard`)
       }
     );
-  }, [session, sessionId, submitSession, setLocation, toast]);
+  }, [session, sessionId, submitSession, setLocation, toast, queryClient]);
 
   // Keep the violation auto-submit ref in sync
   handleViolationAutoSubmitRef.current = handleAutoSubmit;
@@ -297,28 +388,18 @@ export default function ExamEngine() {
       const isFull = !!document.fullscreenElement;
       setIsFullscreen(isFull);
       if (!isFull) {
-        setShowWarning(true);
-        recordViolation(sessionId, 'fullscreen_exit').then((r) => {
-          if (r.autoSubmitted) handleViolationAutoSubmitRef.current();
-          else if (r.violationCount) toast({ title: `⚠️ Violation ${r.violationCount}/5`, description: 'Fullscreen exit detected.', variant: 'destructive' });
-        });
+        triggerRecordViolation('fullscreen_exit');
       }
     };
 
     const onVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        recordViolation(sessionId, 'tab_switch').then((r) => {
-          if (r.autoSubmitted) handleViolationAutoSubmitRef.current();
-          else if (r.violationCount) toast({ title: `⚠️ Tab switch (${r.violationCount}/5)`, description: 'Switching tabs is not allowed.', variant: 'destructive' });
-        });
+        triggerRecordViolation('tab_switch');
       }
     };
 
     const onWindowBlur = () => {
-      recordViolation(sessionId, 'window_blur').then((r) => {
-        if (r.autoSubmitted) handleViolationAutoSubmitRef.current();
-        else if (r.violationCount) toast({ title: `⚠️ Window focus lost (${r.violationCount}/5)`, description: 'Leaving the window is not allowed.', variant: 'destructive' });
-      });
+      triggerRecordViolation('window_blur');
     };
 
     document.addEventListener('fullscreenchange', onFullscreenChange);
@@ -332,13 +413,22 @@ export default function ExamEngine() {
   }, [session?.status, sessionId, toast]);
 
   const saveCurrentAnswer = (newStatus: 'answered' | 'marked' | 'marked_answered' | 'visited', nextIndex?: number) => {
-    if (!session?.questions[currentIndex]) return;
-    
+    if (!session || session.status !== 'in_progress') return;
     const q = session.questions[currentIndex];
+    if (!q) return;
+
+    queryClient.setQueryData(getGetSessionQueryKey(sessionId), (old: any) => {
+      if (!old) return old;
+      const updatedQs = [...old.questions];
+      updatedQs[currentIndex] = {
+        ...updatedQs[currentIndex],
+        status: newStatus,
+        selectedOptionId: localSelectedOption
+      };
+      return { ...old, questions: updatedQs };
+    });
+
     const timeSpent = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
-    
-    // Only submit if something changed or we are marking it
-    // For a robust system, we should always submit time spent, but we'll optimize
     submitAnswer.mutate({
       id: sessionId,
       data: {
@@ -349,18 +439,6 @@ export default function ExamEngine() {
       }
     }, {
       onSuccess: () => {
-        // Optimistic UI update via cache manipulation
-        queryClient.setQueryData(getGetSessionQueryKey(sessionId), (old: any) => {
-          if (!old) return old;
-          const updatedQs = [...old.questions];
-          updatedQs[currentIndex] = {
-            ...updatedQs[currentIndex],
-            status: newStatus,
-            selectedOptionId: localSelectedOption
-          };
-          return { ...old, questions: updatedQs };
-        });
-        
         if (nextIndex !== undefined && nextIndex >= 0 && nextIndex < session.questions.length) {
           setCurrentIndex(nextIndex);
         }
@@ -418,6 +496,8 @@ export default function ExamEngine() {
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(e => console.log(e));
         }
+        queryClient.invalidateQueries({ queryKey: ['/api/v1/dashboard'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/v1/users'] });
         setLocation(`/results`);
       },
       onError: (err) => {
@@ -442,6 +522,41 @@ export default function ExamEngine() {
       <p className="text-muted-foreground mb-6">This exam session has already been submitted or abandoned.</p>
       <Button onClick={() => setLocation('/dashboard')}>Return to Dashboard</Button>
     </div>;
+  }
+
+  if (session.status === 'in_progress' && !hasEntered) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-white p-4">
+        <Card className="max-w-md w-full border-0 shadow-2xl bg-slate-900 text-white">
+          <CardHeader className="text-center pb-2">
+            <Shield className="h-12 w-12 text-primary mx-auto mb-3" />
+            <CardTitle className="text-2xl font-bold">Secure Exam Environment</CardTitle>
+            <CardDescription className="text-slate-400">
+              You are about to enter the official testing environment for {session.examTitle}.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4 text-sm text-slate-300">
+            <p>• Fullscreen mode is mandatory and will be locked during the exam.</p>
+            <p>• Tab switching, minimizing the window, or copying content is strictly monitored.</p>
+            <p>• Ensure your browser fullscreen permissions are active.</p>
+            
+            <Button 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 text-lg shadow-md mt-6"
+              onClick={() => {
+                setHasEntered(true);
+                if (document.documentElement.requestFullscreen) {
+                  document.documentElement.requestFullscreen().catch(e => {
+                    console.error("Fullscreen request failed:", e);
+                  });
+                }
+              }}
+            >
+              Enter Exam Mode
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // Calculate palette stats
@@ -521,7 +636,7 @@ export default function ExamEngine() {
               
               {currentQ?.imageUrl && (
                 <div className="mb-8 rounded-lg overflow-hidden border inline-block">
-                  <img src={currentQ.imageUrl} alt="Question figure" className="max-h-80 object-contain" draggable="false" />
+                  <img src={optimizeCloudinaryUrl(currentQ.imageUrl, { width: 800 })} alt="Question figure" className="max-h-80 object-contain" draggable="false" loading="lazy" />
                 </div>
               )}
 
@@ -643,25 +758,61 @@ export default function ExamEngine() {
 
       {/* Warnings & Modals */}
       <Dialog open={showWarning} onOpenChange={setShowWarning}>
-        <DialogContent className="sm:max-w-md border-destructive">
+        <DialogContent className="sm:max-w-md border-destructive/50 border-2">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-destructive">
-              <AlertTriangle className="h-6 w-6 mr-2" />
-              Fullscreen Exit Detected
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <DialogTitle className="text-center text-xl font-bold text-red-600">
+              Security Violation Detected
             </DialogTitle>
-            <DialogDescription className="pt-2 text-base">
-              You have exited fullscreen mode. This is logged as a violation. Repeated violations will result in automatic submission of the test.
+            <div className="text-center text-sm font-semibold text-muted-foreground mt-1">
+              Exam: <span className="text-foreground">{session?.examTitle}</span>
+            </div>
+            <DialogDescription asChild className="pt-4 text-center">
+              <div className="space-y-4 text-sm text-muted-foreground">
+                <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg text-red-800 dark:text-red-300 font-medium">
+                  {lastViolationType === 'tab_switch' && "Tab switching or minimizing is strictly prohibited."}
+                  {lastViolationType === 'window_blur' && "Focus lost! Leaving the exam window is not allowed."}
+                  {lastViolationType === 'fullscreen_exit' && "You exited fullscreen mode. You must remain in fullscreen."}
+                  {lastViolationType === 'context_menu' && "Right-clicking is not allowed during the exam."}
+                  {lastViolationType === 'copy_attempt' && "Copying text is not allowed during the exam."}
+                  {!lastViolationType && "A security violation was detected."}
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-center mt-2">
+                  <div className="bg-muted p-2 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Violations Logged</p>
+                    <p className="text-lg font-bold text-destructive">{violationCount} / {maxViolations}</p>
+                  </div>
+                  <div className="bg-muted p-2 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Remaining Attempts</p>
+                    <p className="text-lg font-bold text-green-600">{Math.max(0, maxViolations - violationCount)}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  If you reach {maxViolations} violations, your exam will be automatically submitted immediately.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-6">
+          <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-2">
             <Button 
-              className="w-full bg-destructive hover:bg-destructive/90 text-white font-bold"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold"
               onClick={() => {
                 setShowWarning(false);
-                document.documentElement.requestFullscreen().catch(e => console.log(e));
+                if (document.documentElement.requestFullscreen) {
+                  document.documentElement.requestFullscreen().catch(e => console.log(e));
+                }
               }}
             >
-              Return to Exam (Fullscreen)
+              Return to Exam
+            </Button>
+            <Button 
+              variant="outline"
+              className="flex-1"
+              onClick={() => setShowWarning(false)}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -671,12 +822,14 @@ export default function ExamEngine() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Submit Final Exam?</DialogTitle>
-            <DialogDescription className="pt-2 text-base">
-              You are about to submit your exam. Once submitted, you cannot change any answers.
-              <div className="mt-4 bg-muted p-4 rounded-lg space-y-2">
-                <div className="flex justify-between"><span>Answered:</span> <span className="font-bold text-green-600">{stats.answered || 0}</span></div>
-                <div className="flex justify-between"><span>Not Answered:</span> <span className="font-bold text-red-500">{stats.visited || 0}</span></div>
-                <div className="flex justify-between"><span>Marked for Review:</span> <span className="font-bold text-purple-600">{(stats.marked || 0) + (stats.marked_answered || 0)}</span></div>
+            <DialogDescription asChild className="pt-2 text-base">
+              <div className="text-sm text-muted-foreground">
+                You are about to submit your exam. Once submitted, you cannot change any answers.
+                <div className="mt-4 bg-muted p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between"><span>Answered:</span> <span className="font-bold text-green-600">{stats.answered || 0}</span></div>
+                  <div className="flex justify-between"><span>Not Answered:</span> <span className="font-bold text-red-500">{stats.visited || 0}</span></div>
+                  <div className="flex justify-between"><span>Marked for Review:</span> <span className="font-bold text-purple-600">{(stats.marked || 0) + (stats.marked_answered || 0)}</span></div>
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>
@@ -695,6 +848,107 @@ export default function ExamEngine() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Floating Calculator Toggle Button */}
+      <div className="fixed bottom-20 right-4 z-40">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/95 flex items-center justify-center border-0"
+          onClick={() => setShowCalculator(!showCalculator)}
+        >
+          <Calculator className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {showCalculator && (
+        <CalculatorPanel onClose={() => setShowCalculator(false)} isMobile={isMobile} />
+      )}
+    </div>
+  );
+}
+
+// ─── Calculator Panel Component ──────────────────────────────────────────────────
+
+function CalculatorPanel({ onClose, isMobile }: { onClose: () => void; isMobile: boolean }) {
+  const [display, setDisplay] = useState('0');
+  const [equation, setEquation] = useState('');
+
+  const handleDigit = (digit: string) => {
+    setDisplay((prev) => (prev === '0' ? digit : prev + digit));
+  };
+
+  const handleOperator = (op: string) => {
+    setEquation((prev) => prev + display + ' ' + op + ' ');
+    setDisplay('0');
+  };
+
+  const handleClear = () => {
+    setDisplay('0');
+    setEquation('');
+  };
+
+  const handleBackspace = () => {
+    setDisplay((prev) => (prev.length > 1 ? prev.slice(0, -1) : '0'));
+  };
+
+  const handleEqual = () => {
+    try {
+      const fullEq = equation + display;
+      const sanitized = fullEq.replace(/[^0-9+\-*/. ]/g, '');
+      const result = new Function(`return ${sanitized}`)();
+      setDisplay(String(Number(result.toFixed(8))));
+      setEquation('');
+    } catch {
+      setDisplay('Error');
+    }
+  };
+
+  return (
+    <div className={`
+      bg-card border border-border/85 shadow-2xl rounded-xl overflow-hidden flex flex-col z-50
+      ${isMobile 
+        ? 'fixed bottom-0 left-0 w-full h-[360px] animate-in slide-in-from-bottom border-t border-t-border/100' 
+        : 'fixed right-4 bottom-20 w-80 h-[400px] animate-in fade-in zoom-in-95'}
+    `}>
+      <div className="bg-[#1e293b] text-white px-4 py-2.5 flex items-center justify-between">
+        <span className="font-semibold text-xs uppercase tracking-wider">Calculator</span>
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex-1 p-3 bg-slate-50 dark:bg-slate-900 flex flex-col justify-between gap-2.5">
+        {/* Screen */}
+        <div className="bg-background border rounded-lg p-2.5 text-right shadow-inner">
+          <div className="text-[10px] text-muted-foreground min-h-[14px] truncate font-mono">{equation}</div>
+          <div className="text-xl font-bold font-mono truncate text-foreground">{display}</div>
+        </div>
+        {/* Buttons Grid */}
+        <div className="grid grid-cols-4 gap-1.5 flex-1">
+          <Button variant="outline" className="font-bold text-destructive font-mono hover:bg-destructive/10 hover:text-destructive h-full text-xs" onClick={handleClear}>C</Button>
+          <Button variant="outline" className="font-mono h-full text-xs" onClick={handleBackspace}>⌫</Button>
+          <Button variant="outline" className="font-mono h-full text-xs" onClick={() => handleOperator('/')}>/</Button>
+          <Button variant="outline" className="font-mono h-full text-xs" onClick={() => handleOperator('*')}>*</Button>
+
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('7')}>7</Button>
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('8')}>8</Button>
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('9')}>9</Button>
+          <Button variant="outline" className="font-mono h-full text-xs" onClick={() => handleOperator('-')}>-</Button>
+
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('4')}>4</Button>
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('5')}>5</Button>
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('6')}>6</Button>
+          <Button variant="outline" className="font-mono h-full text-xs" onClick={() => handleOperator('+')}>+</Button>
+
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('1')}>1</Button>
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('2')}>2</Button>
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('3')}>3</Button>
+          <Button variant="default" className="row-span-2 font-mono font-bold bg-primary text-primary-foreground flex items-center justify-center text-lg h-full" onClick={handleEqual}>=</Button>
+
+          <Button variant="secondary" className="col-span-2 font-mono h-full text-xs" onClick={() => handleDigit('0')}>0</Button>
+          <Button variant="secondary" className="font-mono h-full text-xs" onClick={() => handleDigit('.')}>.</Button>
+        </div>
+      </div>
     </div>
   );
 }

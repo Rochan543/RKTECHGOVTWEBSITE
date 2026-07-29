@@ -11,7 +11,7 @@ import {
   questionOptionsTable,
   usersTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray, count, desc, sql } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../../middlewares/auth";
 import {
   StartSessionBody,
@@ -55,13 +55,14 @@ router.post("/v1/sessions", requireAuth, async (req: AuthRequest, res): Promise<
 
   // Pre-populate session answers for all questions
   const examQuestions = await db.select().from(examQuestionsTable).where(eq(examQuestionsTable.examId, examId));
-  for (const eq_ of examQuestions) {
-    await db.insert(sessionAnswersTable).values({
+  if (examQuestions.length > 0) {
+    const values = examQuestions.map((eq_) => ({
       sessionId: session.id,
       questionId: eq_.questionId,
-      status: "not_visited",
+      status: "not_visited" as const,
       timeSpentSeconds: 0,
-    });
+    }));
+    await db.insert(sessionAnswersTable).values(values);
   }
 
   res.status(201).json(await buildSessionDetail(session.id));
@@ -69,25 +70,52 @@ router.post("/v1/sessions", requireAuth, async (req: AuthRequest, res): Promise<
 
 router.get("/v1/sessions", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const userId = req.userId!;
-  const sessions = await db.select().from(testSessionsTable).where(eq(testSessionsTable.userId, userId));
+  const sessions = await db.select({
+    id: testSessionsTable.id,
+    examId: testSessionsTable.examId,
+    status: testSessionsTable.status,
+    startedAt: testSessionsTable.startedAt,
+    submittedAt: testSessionsTable.submittedAt,
+    currentQuestionIndex: testSessionsTable.currentQuestionIndex,
+    examTitle: examsTable.title,
+    examDuration: examsTable.durationMinutes,
+  })
+    .from(testSessionsTable)
+    .leftJoin(examsTable, eq(testSessionsTable.examId, examsTable.id))
+    .where(eq(testSessionsTable.userId, userId))
+    .orderBy(desc(testSessionsTable.startedAt));
 
-  const data = await Promise.all(sessions.map(async (s) => {
-    const [exam] = await db.select({ title: examsTable.title, durationMinutes: examsTable.durationMinutes }).from(examsTable).where(eq(examsTable.id, s.examId));
-    const answers = await db.select().from(sessionAnswersTable).where(eq(sessionAnswersTable.sessionId, s.id));
-    const answered = answers.filter(a => a.status === "answered" || a.status === "marked_answered").length;
+  const sessionIds = sessions.map(s => s.id);
+
+  // Group session answers count and answered count in one query
+  const answersStats = sessionIds.length > 0
+    ? await db.select({
+        sessionId: sessionAnswersTable.sessionId,
+        total: count(),
+        answered: sql<number>`count(case when ${sessionAnswersTable.status} in ('answered', 'marked_answered') then 1 end)::int`,
+      })
+        .from(sessionAnswersTable)
+        .where(inArray(sessionAnswersTable.sessionId, sessionIds))
+        .groupBy(sessionAnswersTable.sessionId)
+    : [];
+
+  const statsMap = new Map(answersStats.map(s => [s.sessionId, { total: s.total, answered: s.answered }]));
+
+  const data = sessions.map((s) => {
+    const stats = statsMap.get(s.id) ?? { total: 0, answered: 0 };
     return {
       id: s.id,
       examId: s.examId,
-      examTitle: exam?.title ?? "Unknown",
+      examTitle: s.examTitle ?? "Unknown",
       status: s.status,
       startedAt: s.startedAt,
       submittedAt: s.submittedAt ?? null,
-      durationMinutes: exam?.durationMinutes ?? 60,
+      durationMinutes: s.examDuration ?? 60,
       currentQuestionIndex: s.currentQuestionIndex ?? 0,
-      answeredCount: answered,
-      totalQuestions: answers.length,
+      answeredCount: stats.answered,
+      totalQuestions: stats.total,
     };
-  }));
+  });
 
   res.json(data);
 });
@@ -198,14 +226,29 @@ router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res
   let skipped = 0;
   let totalTime = 0;
 
+  const optionIds = answers
+    .map(a => a.selectedOptionId)
+    .filter((id): id is number => id !== null && id !== undefined);
+  const questionIds = answers.map(a => a.questionId);
+
+  const optionsList = optionIds.length > 0
+    ? await db.select().from(questionOptionsTable).where(inArray(questionOptionsTable.id, optionIds))
+    : [];
+  const optionMap = new Map(optionsList.map(o => [o.id, o]));
+
+  const questionsList = questionIds.length > 0
+    ? await db.select().from(questionsTable).where(inArray(questionsTable.id, questionIds))
+    : [];
+  const questionMap = new Map(questionsList.map(q => [q.id, q]));
+
   for (const answer of answers) {
     totalTime += answer.timeSpentSeconds ?? 0;
     if (answer.status === "not_visited" || answer.status === "visited" || !answer.selectedOptionId) {
       skipped++;
       continue;
     }
-    const [option] = await db.select().from(questionOptionsTable).where(eq(questionOptionsTable.id, answer.selectedOptionId));
-    const [question] = await db.select().from(questionsTable).where(eq(questionsTable.id, answer.questionId));
+    const option = optionMap.get(answer.selectedOptionId);
+    const question = questionMap.get(answer.questionId);
     if (option?.isCorrect) {
       score += question?.positiveMarks ?? 1;
       correct++;
@@ -259,15 +302,32 @@ async function buildSessionDetail(sessionId: number) {
   const [session] = await db.select().from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
   if (!session) return null;
 
-  const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
-  const sections = await db.select().from(examSectionsTable).where(eq(examSectionsTable.examId, session.examId));
-  const examQs = await db.select().from(examQuestionsTable).where(eq(examQuestionsTable.examId, session.examId));
-  const answers = await db.select().from(sessionAnswersTable).where(eq(sessionAnswersTable.sessionId, sessionId));
+  const [exam, sections, examQs, answers] = await Promise.all([
+    db.select().from(examsTable).where(eq(examsTable.id, session.examId)).then(r => r[0]),
+    db.select().from(examSectionsTable).where(eq(examSectionsTable.examId, session.examId)),
+    db.select().from(examQuestionsTable).where(eq(examQuestionsTable.examId, session.examId)),
+    db.select().from(sessionAnswersTable).where(eq(sessionAnswersTable.sessionId, sessionId)),
+  ]);
   const answerMap = new Map(answers.map(a => [a.questionId, a]));
 
-  const questions = await Promise.all(examQs.map(async (eq_) => {
-    const [q] = await db.select().from(questionsTable).where(eq(questionsTable.id, eq_.questionId));
-    const options = await db.select().from(questionOptionsTable).where(eq(questionOptionsTable.questionId, eq_.questionId));
+  const questionIds = examQs.map(eq_ => eq_.questionId);
+  const [questionsList, optionsList] = await Promise.all([
+    questionIds.length > 0 ? db.select().from(questionsTable).where(inArray(questionsTable.id, questionIds)) : [],
+    questionIds.length > 0 ? db.select().from(questionOptionsTable).where(inArray(questionOptionsTable.questionId, questionIds)) : [],
+  ]);
+  const questionMap = new Map(questionsList.map(q => [q.id, q]));
+  
+  const optionsMap = new Map<number, typeof questionOptionsTable.$inferSelect[]>();
+  for (const o of optionsList) {
+    if (!optionsMap.has(o.questionId)) {
+      optionsMap.set(o.questionId, []);
+    }
+    optionsMap.get(o.questionId)!.push(o);
+  }
+
+  const questions = examQs.map((eq_) => {
+    const q = questionMap.get(eq_.questionId);
+    const options = optionsMap.get(eq_.questionId) || [];
     const answer = answerMap.get(eq_.questionId);
     return {
       id: eq_.id,
@@ -282,9 +342,9 @@ async function buildSessionDetail(sessionId: number) {
       timeSpentSeconds: answer?.timeSpentSeconds ?? 0,
       order: eq_.order,
     };
-  }));
+  });
 
-  const sectionDetails = await Promise.all(sections.map(async (sec) => {
+  const sectionDetails = sections.map((sec) => {
     return {
       id: sec.id,
       name: sec.name,
@@ -298,7 +358,7 @@ async function buildSessionDetail(sessionId: number) {
       navigationRule: sec.navigationRule,
       autoMove: sec.autoMove,
     };
-  }));
+  });
 
   return {
     id: session.id,

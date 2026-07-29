@@ -20,4 +20,10 @@ export interface ExamInput {
   /** @nullable */
   categoryId?: number | null;
   status?: ExamInputStatus;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
 }

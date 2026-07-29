@@ -3,8 +3,34 @@ import { db, notificationsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../../middlewares/auth";
 import { MarkNotificationReadParams } from "@workspace/api-zod";
+import { activeClients } from "../../lib/notifications";
 
 const router: IRouter = Router();
+
+router.get("/v1/notifications/stream", requireAuth, (req: AuthRequest, res): void => {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+  });
+  res.write("\n");
+
+  const userId = req.userId!;
+  const client = { userId, res };
+  activeClients.push(client);
+
+  const heartbeat = setInterval(() => {
+    res.write(`data: ${JSON.stringify({ type: "heartbeat" })}\n\n`);
+  }, 30000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    const index = activeClients.indexOf(client);
+    if (index !== -1) {
+      activeClients.splice(index, 1);
+    }
+  });
+});
 
 router.get("/v1/notifications", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const notifications = await db.select().from(notificationsTable)

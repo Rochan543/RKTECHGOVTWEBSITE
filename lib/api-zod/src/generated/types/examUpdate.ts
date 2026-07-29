@@ -6,6 +6,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { ExamUpdateStatus } from './examUpdateStatus';
+import type { ExamUpdateType } from './examUpdateType';
 
 export interface ExamUpdate {
   /** @nullable */
@@ -16,4 +17,20 @@ export interface ExamUpdate {
   status?: ExamUpdateStatus;
   /** @nullable */
   durationMinutes?: number | null;
+  /** @nullable */
+  totalMarks?: number | null;
+  /** @nullable */
+  positiveMarks?: number | null;
+  /** @nullable */
+  negativeMarks?: number | null;
+  /** @nullable */
+  categoryId?: number | null;
+  /** @nullable */
+  type?: ExamUpdateType;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
 }

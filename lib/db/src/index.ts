@@ -14,7 +14,18 @@ if (!connectionString) {
   );
 }
 
-export const pool = new Pool({ connectionString });
+const hasSsl = connectionString.includes("sslmode=require") || connectionString.includes("sslmode=verify-full");
+const cleanConnectionString = connectionString
+  .replace(/sslmode=[^&]*/g, "")
+  .replace(/channel_binding=[^&]*/g, "")
+  .replace(/\?&/g, "?")
+  .replace(/&&/g, "&")
+  .replace(/[&?]$/g, "");
+
+export const pool = new Pool({
+  connectionString: cleanConnectionString,
+  ssl: hasSsl ? { rejectUnauthorized: false } : undefined,
+});
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

@@ -5,6 +5,7 @@ import {
   timestamp,
   real,
   integer,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -32,7 +33,10 @@ export const testSessionsTable = pgTable("test_sessions", {
     .notNull()
     .defaultNow(),
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
-});
+}, (table) => [
+  index("test_sessions_user_id_idx").on(table.userId),
+  index("test_sessions_exam_id_idx").on(table.examId),
+]);
 
 export const sessionAnswersTable = pgTable("session_answers", {
   id: serial("id").primaryKey(),
@@ -55,7 +59,10 @@ export const sessionAnswersTable = pgTable("session_answers", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-});
+}, (table) => [
+  index("session_answers_session_id_idx").on(table.sessionId),
+  index("session_answers_question_id_idx").on(table.questionId),
+]);
 
 export const resultsTable = pgTable("results", {
   id: serial("id").primaryKey(),
@@ -80,7 +87,11 @@ export const resultsTable = pgTable("results", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("results_user_id_idx").on(table.userId),
+  index("results_exam_id_idx").on(table.examId),
+  index("results_session_id_idx").on(table.sessionId),
+]);
 
 export const violationsTable = pgTable("violations", {
   id: serial("id").primaryKey(),
@@ -96,7 +107,10 @@ export const violationsTable = pgTable("violations", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("violations_session_id_idx").on(table.sessionId),
+  index("violations_user_id_idx").on(table.userId),
+]);
 
 export type Violation = typeof violationsTable.$inferSelect;
 export type InsertViolation = typeof violationsTable.$inferInsert;

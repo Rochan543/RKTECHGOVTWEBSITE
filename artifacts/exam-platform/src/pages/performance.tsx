@@ -108,7 +108,7 @@ export default function Performance() {
           </CardHeader>
           <CardContent>
             {trendData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={200} minWidth={100} minHeight={100}>
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="attempt" tick={{ fontSize: 11 }} />
@@ -131,7 +131,7 @@ export default function Performance() {
           </CardHeader>
           <CardContent>
             {radarData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={200} minWidth={100} minHeight={100}>
                 <RadarChart data={radarData}>
                   <PolarGrid />
                   <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10 }} />
@@ -177,7 +177,7 @@ export default function Performance() {
           </CardHeader>
           <CardContent>
             {(subjectPerf ?? []).length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={200} minWidth={100} minHeight={100}>
                 <BarChart data={(subjectPerf ?? []).map((s: { subjectName: string; accuracy: number }) => ({ name: s.subjectName.slice(0, 12), accuracy: Math.round(s.accuracy) }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />

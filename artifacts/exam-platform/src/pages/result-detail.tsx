@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, Target, Trophy, Clock, CheckCircle2, XCircle, MinusCircle, AlertCircle, BookOpen } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from 'recharts';
 
 export default function ResultDetail() {
   const params = useParams();
@@ -13,6 +14,7 @@ export default function ResultDetail() {
   const { data: result, isLoading } = useGetResult(id, {
     query: { enabled: !!id, queryKey: getGetResultQueryKey(id) }
   });
+  const resultAny = result as any;
 
   if (isLoading) {
     return <div className="p-8 animate-pulse space-y-6">
@@ -125,11 +127,175 @@ export default function ResultDetail() {
         </div>
 
         <div className="lg:col-span-2">
-          <Tabs defaultValue="solutions" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+          <Tabs defaultValue="analytics" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="analytics">Analytics Dashboard</TabsTrigger>
               <TabsTrigger value="solutions">Solutions & Explanations</TabsTrigger>
               <TabsTrigger value="subjects">Subject Analysis</TabsTrigger>
             </TabsList>
+            
+            <TabsContent value="analytics" className="mt-6 space-y-6">
+              {/* Summary Cards */}
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-l-4 border-l-blue-500 shadow-sm">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Percentage Score</p>
+                      <p className="text-2xl font-bold mt-1">{resultAny ? ((resultAny.score / resultAny.totalMarks) * 100).toFixed(1) : 0}%</p>
+                    </div>
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Target className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-orange-500 shadow-sm">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avg Time Per Question</p>
+                      <p className="text-2xl font-bold mt-1">
+                        {resultAny && resultAny.questions?.length > 0 ? (resultAny.timeTakenSeconds / resultAny.questions.length).toFixed(1) : 0}s
+                      </p>
+                    </div>
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                      <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-l-4 border-l-red-500 shadow-sm">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Negative Marks Deduction</p>
+                      <p className="text-2xl font-bold mt-1 text-red-600">
+                        -{resultAny?.marksBreakdown?.negativeMarksDeducted?.toFixed(2) || '0.00'}
+                      </p>
+                    </div>
+                    <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                      <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Pie Chart: Attempt Distribution */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-bold">Attempt Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-64">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Correct', value: resultAny?.correct ?? 0, color: '#16a34a' },
+                            { name: 'Incorrect', value: resultAny?.incorrect ?? 0, color: '#dc2626' },
+                            { name: 'Skipped', value: resultAny?.skipped ?? 0, color: '#64748b' }
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {[
+                            { name: 'Correct', value: resultAny?.correct ?? 0, color: '#16a34a' },
+                            { name: 'Incorrect', value: resultAny?.incorrect ?? 0, color: '#dc2626' },
+                            { name: 'Skipped', value: resultAny?.skipped ?? 0, color: '#64748b' }
+                          ].map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => [`${value} questions`]} />
+                        <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Difficulty wise Breakdown */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base font-bold">Difficulty-wise Accuracy</CardTitle>
+                  </CardHeader>
+                  <CardContent className="h-64">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+                      <BarChart
+                        data={(resultAny?.difficultyBreakdown || []).map((d: any) => ({
+                          difficulty: d.difficulty.charAt(0).toUpperCase() + d.difficulty.slice(1),
+                          Accuracy: Math.round(d.accuracy)
+                        }))}
+                        margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="difficulty" />
+                        <YAxis tickFormatter={(val) => `${val}%`} />
+                        <Tooltip formatter={(value) => [`${value}% Accuracy`]} />
+                        <Bar dataKey="Accuracy" fill="#6366f1" radius={[4, 4, 0, 0]}>
+                          {(resultAny?.difficultyBreakdown || []).map((d: any, index: number) => {
+                            let color = "#3b82f6"; // blue for medium
+                            if (d.difficulty === 'easy') color = "#10b981"; // green
+                            if (d.difficulty === 'hard') color = "#ef4444"; // red
+                            return <Cell key={`cell-${index}`} fill={color} />;
+                          })}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Subject Breakdown Chart */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-bold">Subject-wise Accuracy (%)</CardTitle>
+                </CardHeader>
+                <CardContent className="h-72">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={100}>
+                    <BarChart
+                      data={(resultAny?.subjectBreakdown || []).map((s: any) => ({
+                        subject: s.subjectName.slice(0, 20),
+                        Accuracy: Math.round(s.accuracy)
+                      }))}
+                      margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="subject" />
+                      <YAxis tickFormatter={(val) => `${val}%`} />
+                      <Tooltip formatter={(value) => [`${value}% Accuracy`]} />
+                      <Bar dataKey="Accuracy" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Marks Breakdown details */}
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base font-bold">Marks & Performance Scorecard</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 bg-muted rounded-lg text-center">
+                      <p className="text-xs text-muted-foreground">Positive Marks Earned</p>
+                      <p className="text-lg font-bold text-green-600">+{resultAny?.marksBreakdown?.positiveMarksEarned?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div className="p-3 bg-muted rounded-lg text-center">
+                      <p className="text-xs text-muted-foreground">Negative Marks Deducted</p>
+                      <p className="text-lg font-bold text-red-500">-{resultAny?.marksBreakdown?.negativeMarksDeducted?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div className="p-3 bg-muted rounded-lg text-center">
+                      <p className="text-xs text-muted-foreground">Final Score</p>
+                      <p className="text-lg font-bold text-blue-600">{resultAny?.score} / {resultAny?.totalMarks}</p>
+                    </div>
+                    <div className="p-3 bg-muted rounded-lg text-center">
+                      <p className="text-xs text-muted-foreground">Accuracy Rate</p>
+                      <p className="text-lg font-bold text-foreground">{resultAny?.accuracy.toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
             <TabsContent value="solutions" className="mt-6 space-y-6">
               {result.questions.map((q, idx) => (
                 <Card key={q.questionId} className={`overflow-hidden border-l-4 ${q.isSkipped ? 'border-l-slate-400' : q.isCorrect ? 'border-l-green-500' : 'border-l-red-500'}`}>

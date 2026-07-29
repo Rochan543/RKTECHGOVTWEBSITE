@@ -18,10 +18,10 @@ export interface SessionDetail {
   submittedAt?: Date | null;
   durationMinutes: number;
   currentSectionIndex?: number;
+  questions: SessionQuestion[];
+  sections: ExamSection[];
   /** @nullable */
   questionTimerSeconds?: number | null;
   autoSave?: boolean;
   autoSubmit?: boolean;
-  questions: SessionQuestion[];
-  sections: ExamSection[];
 }

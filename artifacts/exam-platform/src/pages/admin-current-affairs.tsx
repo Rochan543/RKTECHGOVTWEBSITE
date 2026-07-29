@@ -140,6 +140,7 @@ export default function AdminCurrentAffairs() {
     onSuccess: () => {
       toast({ title: 'Article created' });
       queryClient.invalidateQueries({ queryKey: ['admin-current-affairs'] });
+      queryClient.invalidateQueries({ queryKey: ['current-affairs-student'] });
       setShowDialog(false);
       setForm(defaultForm);
     },
@@ -156,6 +157,7 @@ export default function AdminCurrentAffairs() {
     onSuccess: () => {
       toast({ title: 'Article updated' });
       queryClient.invalidateQueries({ queryKey: ['admin-current-affairs'] });
+      queryClient.invalidateQueries({ queryKey: ['current-affairs-student'] });
       setShowDialog(false);
       setEditItem(null);
     },
@@ -168,6 +170,7 @@ export default function AdminCurrentAffairs() {
     onSuccess: () => {
       toast({ title: 'Article deleted' });
       queryClient.invalidateQueries({ queryKey: ['admin-current-affairs'] });
+      queryClient.invalidateQueries({ queryKey: ['current-affairs-student'] });
     },
     onError: () => toast({ title: 'Failed to delete', variant: 'destructive' }),
   });

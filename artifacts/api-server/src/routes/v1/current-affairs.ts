@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db, currentAffairsTable } from "@workspace/db";
-import { eq, desc, ilike, and } from "drizzle-orm";
+import { eq, desc, ilike, and, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin, type AuthRequest } from "../../middlewares/auth";
 import { z } from "zod";
+import { createNotificationForStudents, createNotificationForAdmins } from "../../lib/notifications";
 
 const router: IRouter = Router();
 
@@ -17,7 +18,7 @@ const CreateSchema = z.object({
   title: z.string().min(1),
   content: z.string().min(1),
   category: z.enum(["gk", "current_affairs", "gs_news"]).default("current_affairs"),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().url().nullish().or(z.literal("")),
   publishedDate: z.string().datetime().optional(),
 });
 
@@ -33,21 +34,28 @@ router.get(
       return;
     }
     const { page, limit, category, search } = parsed.data;
+    const offset = (page - 1) * limit;
 
     const conditions = [];
     if (category) conditions.push(eq(currentAffairsTable.category, category));
     if (search) conditions.push(ilike(currentAffairsTable.title, `%${search}%`));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const allItems = await db
-      .select()
-      .from(currentAffairsTable)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(currentAffairsTable.publishedDate));
+    const [items, [{ total }]] = await Promise.all([
+      db
+        .select()
+        .from(currentAffairsTable)
+        .where(whereClause)
+        .orderBy(desc(currentAffairsTable.publishedDate))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(currentAffairsTable)
+        .where(whereClause),
+    ]);
 
-    const total = allItems.length;
-    const items = allItems.slice((page - 1) * limit, page * limit);
-
-    res.json({ data: items, total, page, limit });
+    res.json({ data: items, total: total ?? 0, page, limit });
   }
 );
 
@@ -90,6 +98,11 @@ router.post(
           : new Date(),
       })
       .returning();
+
+    // Trigger Notifications
+    await createNotificationForAdmins("New Current Affairs", `Current Affairs article '${item.title}' has been posted.`, "system");
+    await createNotificationForStudents("New Current Affairs", `New Current Affairs article '${item.title}' is available. Keep up to date in Daily GK!`, "announcement", "/daily-gk");
+
     res.status(201).json(item);
   }
 );

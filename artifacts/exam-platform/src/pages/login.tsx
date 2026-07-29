@@ -50,29 +50,27 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-background">
-      <div className="flex items-center justify-center p-8">
-        <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-100 dark:from-slate-950 dark:via-indigo-950/10 dark:to-slate-900">
+      <div className="flex items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-md bg-card border border-border shadow-xl hover:shadow-2xl transition-shadow duration-300 rounded-3xl p-8 md:p-10 space-y-8">
           <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="h-12 w-12 bg-primary text-primary-foreground rounded-xl flex items-center justify-center">
-                <ShieldCheck className="h-8 w-8" />
-              </div>
+            <div className="flex justify-center mb-6">
+              <img src="/logo.png" alt="SSC Portal Logo" className="h-20 w-20 object-contain transition-transform hover:scale-105" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Sign in to your account</h1>
-            <p className="text-muted-foreground mt-2">Ready to conquer your next exam?</p>
+            <h2 className="text-4xl font-extrabold tracking-tight text-foreground">RK TECH Portal</h2>
+            <p className="text-sm text-muted-foreground mt-2 font-medium">Sign in to your account to continue</p>
           </div>
-
+ 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email address</FormLabel>
+                    <FormLabel className="font-semibold text-foreground">Email address</FormLabel>
                     <FormControl>
-                      <Input placeholder="student@example.com" {...field} />
+                      <Input placeholder="student@example.com" {...field} className="rounded-xl border-slate-200/80 focus:border-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -83,49 +81,50 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="font-semibold text-foreground">Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} className="rounded-xl border-slate-200/80 focus:border-primary" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               
-              <div className="flex items-center justify-between">
-                <Link href="/forgot-password" className="text-sm font-medium text-primary hover:underline">
+              <div className="flex items-center justify-end">
+                <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:text-indigo-700 transition-colors">
                   Forgot password?
                 </Link>
               </div>
-
-              <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+ 
+              <Button type="submit" className="w-full py-6 rounded-xl font-bold shadow-md hover:shadow-lg transition-all" disabled={loginMutation.isPending}>
                 {loginMutation.isPending ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
           </Form>
-
+ 
           <p className="text-center text-sm text-muted-foreground">
             Don't have an account?{' '}
-            <Link href="/register" className="font-semibold text-primary hover:underline">
+            <Link href="/register" className="font-bold text-primary hover:text-indigo-700 transition-colors">
               Register here
             </Link>
           </p>
         </div>
       </div>
-      <div className="hidden md:flex flex-col justify-center items-center bg-indigo-900 text-white p-12">
-        <div className="max-w-md">
-          <h2 className="text-4xl font-bold mb-6 text-white leading-tight">The ultimate testing ground for serious aspirants.</h2>
-          <ul className="space-y-4 text-indigo-200 text-lg">
+      <div className="hidden md:flex flex-col justify-center items-center bg-gradient-to-br from-indigo-900 to-indigo-950 text-white p-12 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(99,102,241,0.15),transparent)] pointer-events-none" />
+        <div className="max-w-md relative z-10 space-y-6">
+          <h2 className="text-4xl font-extrabold text-white leading-tight">The ultimate testing ground for serious aspirants.</h2>
+          <ul className="space-y-4 text-indigo-200 text-lg font-medium">
             <li className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-indigo-400" />
+              <div className="h-2.5 w-2.5 rounded-full bg-indigo-400 shrink-0" />
               Real exam interface simulation
             </li>
             <li className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-indigo-400" />
+              <div className="h-2.5 w-2.5 rounded-full bg-indigo-400 shrink-0" />
               Detailed subject-wise analytics
             </li>
             <li className="flex items-center gap-3">
-              <div className="h-2 w-2 rounded-full bg-indigo-400" />
+              <div className="h-2.5 w-2.5 rounded-full bg-indigo-400 shrink-0" />
               All India Rank & Leaderboards
             </li>
           </ul>

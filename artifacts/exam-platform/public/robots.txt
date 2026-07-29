@@ -1,2 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /super-admin/
+Disallow: /exam/
+
+Sitemap: https://ssc-portal.replit.app/sitemap.xml

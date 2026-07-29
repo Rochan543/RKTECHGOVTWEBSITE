@@ -17,9 +17,7 @@ import {
 // ─── API Helpers ───────────────────────────────────────────────────────────────
 
 async function fetchSuperAdmin<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await customFetch(path, opts) as Response;
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  return res.json() as Promise<T>;
+  return customFetch<T>(path, opts as any);
 }
 
 // ─── Analytics Panel ──────────────────────────────────────────────────────────
@@ -131,14 +129,45 @@ function SystemHealth() {
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><Server className="h-5 w-5" />Server</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Server className="h-5 w-5" />Server Info</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Node Version</span><span>{data?.nodeVersion ?? '—'}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Uptime</span><span>{data?.uptime != null ? formatUptime(data.uptime) : '—'}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">DB Status</span><Badge variant={data?.database?.status === 'connected' ? 'default' : 'destructive'}>{data?.database?.status ?? '—'}</Badge></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">DB Latency</span><span>{data?.database?.latencyMs != null ? `${data.database.latencyMs}ms` : '—'}</span></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Database Status</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">DB Status</span>
+              <span className="font-semibold">
+                {data?.database?.status === 'connected' ? '🟢 Connected' : '🔴 Disconnected'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Connection State</span>
+              <Badge variant={data?.database?.connectionState === 'connected' ? 'default' : 'destructive'} className="capitalize scale-90">
+                {data?.database?.connectionState ?? 'disconnected'}
+              </Badge>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Response Time</span>
+              <span>{data?.database?.latencyMs != null ? `${data.database.latencyMs}ms` : '—'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Database Version</span>
+              <span className="text-xs truncate max-w-[120px] font-mono" title={data?.database?.version}>{data?.database?.version?.split(',')[0] ?? '—'}</span>
+            </div>
+            {data?.database?.pool && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Connection Pool</span>
+                <span className="font-mono text-xs" title="Total | Idle | Waiting">
+                  T: {data.database.pool.total} | I: {data.database.pool.idle} | W: {data.database.pool.waiting}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>

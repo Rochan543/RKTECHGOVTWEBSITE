@@ -5,6 +5,8 @@ import mammoth from "mammoth";
 import * as xlsx from "xlsx";
 import { createWorker } from "tesseract.js";
 
+import { logger } from "./logger";
+
 export interface ParsedOption {
   text: string;
   isCorrect: boolean;
@@ -36,153 +38,69 @@ export interface ImportReport {
 // Heuristic parser for raw text extracted from PDF, DOCX, TXT, or OCR
 export function parseRawText(text: string): ParsedQuestion[] {
   const questions: ParsedQuestion[] = [];
-  
-  // Normalize line endings and split into sections where questions start
-  // Split on indicators like "Q1.", "Q2:", "Question 1", or numbers followed by a dot/parenthesis at start of line
-  const normalized = text.replace(/\r\n/g, "\n");
-  const rawBlocks = normalized.split(/\n\s*(?=Q(?:uestion)?\s*\d+[\.\:\)]|\d+\s*[\.\:\)])/i);
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
 
-  for (const block of rawBlocks) {
-    if (!block.trim()) continue;
+  let currentQuestion: {
+    textLines: string[];
+    options: ParsedOption[];
+    answerText: string;
+    explanation: string;
+    hint: string;
+    difficulty: "easy" | "medium" | "hard";
+    positiveMarks: number;
+    negativeMarks: number;
+    isComplete: boolean;
+  } | null = null;
 
-    const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length === 0) continue;
+  function commitCurrent() {
+    if (!currentQuestion) return;
+    const qText = currentQuestion.textLines.join("\n").trim();
+    if (!qText) return;
 
-    let questionText = "";
-    const options: ParsedOption[] = [];
-    let explanation = "";
-    let hint = "";
-    let difficulty: "easy" | "medium" | "hard" = "medium";
-    let positiveMarks = 1;
-    let negativeMarks = 0.25;
+    let options = [...currentQuestion.options];
     let type: ParsedQuestion["type"] = "single_choice";
-    let answerText = "";
-
-    // Identify question text line (usually first line, stripping leading Q1., 1. etc.)
-    const qMatch = lines[0].match(/^(?:Q(?:uestion)?\s*\d*[\.\:\)]|\d+\s*[\.\:\)]+)\s*(.*)/i);
-    questionText = qMatch ? qMatch[1].trim() : lines[0];
-
-    // Read remaining lines for options, answer, explanation, etc.
-    let readingQuestionText = true;
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-
-      // Match Option: A) option text or a. option text or (A) option text
-      const optMatch = line.match(/^[\(\[]?\s*([A-D]|[a-d]|\d+)\s*[\)\.\-\]]\s*(.*)/);
-      if (optMatch) {
-        readingQuestionText = false;
-        const optLetter = optMatch[1].toUpperCase();
-        const optVal = optMatch[2].trim();
-        options.push({ text: optVal, isCorrect: false });
-        continue;
-      }
-
-      // Match Answer line: Answer: A or Ans: B or Correct: A, B
-      const ansMatch = line.match(/^(?:Answer|Ans|Correct|Key)\s*[\:\-]?\s*(.*)/i);
-      if (ansMatch) {
-        readingQuestionText = false;
-        answerText = ansMatch[1].trim().toUpperCase();
-        continue;
-      }
-
-      // Match Explanation: explanation text
-      const expMatch = line.match(/^(?:Explanation|Explain|Sol|Solution)\s*[\:\-]?\s*(.*)/i);
-      if (expMatch) {
-        readingQuestionText = false;
-        explanation = expMatch[1].trim();
-        // Append any subsequent lines to explanation if they don't match other keywords
-        let j = i + 1;
-        while (j < lines.length && !lines[j].match(/^(?:Answer|Ans|Correct|Key|Difficulty|Marks|Negative|Hint)/i)) {
-          explanation += "\n" + lines[j].trim();
-          i = j;
-          j++;
-        }
-        continue;
-      }
-
-      // Match Hint
-      const hintMatch = line.match(/^Hint\s*[\:\-]?\s*(.*)/i);
-      if (hintMatch) {
-        readingQuestionText = false;
-        hint = hintMatch[1].trim();
-        continue;
-      }
-
-      // Match Difficulty
-      const diffMatch = line.match(/^Difficulty\s*[\:\-]?\s*(easy|medium|hard)/i);
-      if (diffMatch) {
-        readingQuestionText = false;
-        difficulty = diffMatch[1].toLowerCase() as any;
-        continue;
-      }
-
-      // Match Marks
-      const marksMatch = line.match(/^Marks\s*[\:\-]?\s*([\d\.]+)/i);
-      if (marksMatch) {
-        readingQuestionText = false;
-        positiveMarks = parseFloat(marksMatch[1]) || 1;
-        continue;
-      }
-
-      // Match Negative Marks
-      const negMatch = line.match(/^(?:Negative Marks|Negative)\s*[\:\-]?\s*([\d\.]+)/i);
-      if (negMatch) {
-        readingQuestionText = false;
-        negativeMarks = parseFloat(negMatch[1]) || 0;
-        continue;
-      }
-
-      // If we are still reading the question body, append the text
-      if (readingQuestionText) {
-        questionText += "\n" + line;
-      }
-    }
-
-    if (!questionText.trim()) continue;
+    const answerText = currentQuestion.answerText.trim().toUpperCase();
 
     // Determine correct options based on answerText
-    // Supported answers: "A", "B", "A, B", "TRUE", "1"
     if (options.length > 0) {
       if (answerText.includes(",") || answerText.includes("&") || answerText.includes("AND")) {
         type = "multiple_choice";
-        const letters = answerText.split(/[\,\s\&]+/i).map(l => l.trim());
+        const letters = answerText.split(/[\,\s\&]+/i).map(l => l.trim().toUpperCase());
         options.forEach((opt, idx) => {
           const letter = String.fromCharCode(65 + idx);
           if (letters.includes(letter)) opt.isCorrect = true;
         });
       } else {
         type = "single_choice";
-        // Find single correct index: e.g. "A" -> index 0, "B" -> index 1
         let correctIdx = -1;
-        if (answerText.length === 1) {
+        if (answerText.length === 1 && answerText >= "A" && answerText <= "D") {
           correctIdx = answerText.charCodeAt(0) - 65;
         } else {
-          // Fallback matching text
           correctIdx = options.findIndex(o => o.text.toUpperCase() === answerText);
         }
         if (correctIdx >= 0 && correctIdx < options.length) {
           options[correctIdx].isCorrect = true;
         } else if (options.length > 0) {
-          // Default to first option if not found
           options[0].isCorrect = true;
         }
       }
     } else {
-      // True/False or Integer question types
       if (answerText === "TRUE" || answerText === "FALSE") {
         type = "true_false";
-        options.push({ text: "True", isCorrect: answerText === "TRUE" });
-        options.push({ text: "False", isCorrect: answerText === "FALSE" });
-      } else if (!isNaN(parseInt(answerText))) {
+        options = [
+          { text: "True", isCorrect: answerText === "TRUE" },
+          { text: "False", isCorrect: answerText === "FALSE" }
+        ];
+      } else if (!isNaN(parseInt(answerText)) && answerText !== "") {
         type = "integer";
-        options.push({ text: answerText, isCorrect: true });
+        options = [{ text: answerText, isCorrect: true }];
       }
     }
 
     // Validation checks
     let isValid = true;
     let validationError = "";
-    if (!questionText.trim()) {
+    if (!qText) {
       isValid = false;
       validationError = "Missing question text";
     } else if (options.length < 2 && type !== "integer" && (type as string) !== "numerical") {
@@ -194,19 +112,103 @@ export function parseRawText(text: string): ParsedQuestion[] {
     }
 
     questions.push({
-      text: questionText,
+      text: qText,
       options,
       type,
-      difficulty,
-      explanation: explanation || undefined,
-      hint: hint || undefined,
-      positiveMarks,
-      negativeMarks,
+      difficulty: currentQuestion.difficulty,
+      explanation: currentQuestion.explanation.trim() || undefined,
+      hint: currentQuestion.hint.trim() || undefined,
+      positiveMarks: currentQuestion.positiveMarks,
+      negativeMarks: currentQuestion.negativeMarks,
       isValid,
       validationError: validationError || undefined,
     });
+
+    currentQuestion = null;
   }
 
+  for (let rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      if (currentQuestion && !currentQuestion.isComplete && currentQuestion.options.length === 0) {
+        currentQuestion.textLines.push("");
+      }
+      continue;
+    }
+
+    // Match question starters: Q. Q: Question Question: 1. 2. 3.
+    const isQuestionStarter = /^(?:Q(?:uestion)?\s*[\.\:\)]|Q(?:uestion)?\s*\d+\s*[\.\:\)]+|\d+\s*[\.\:\)]|Question\b)/i.test(line);
+
+    // Match options: A) a. (A)
+    const optMatch = line.match(/^\s*(?:\(([A-Da-d])\)|\[([A-Da-d])\]|([A-Da-d])\s*[\.\)]+)\s*(.*)/);
+
+    // Match answer: Answer: Ans: Correct: Correct Answer: Correct Option:
+    const ansMatch = line.match(/^\s*(?:Correct\s*Answer|Correct\s*Option|Answer|Ans|Correct)\s*[\:\-]?\s*(.*)/i);
+
+    // Match metadata
+    const expMatch = line.match(/^\s*(?:Explanation|Explain|Sol|Solution)\s*[\:\-]?\s*(.*)/i);
+    const hintMatch = line.match(/^\s*Hint\s*[\:\-]?\s*(.*)/i);
+    const diffMatch = line.match(/^\s*Difficulty\s*[\:\-]?\s*(easy|medium|hard)/i);
+    const marksMatch = line.match(/^\s*(?:Positive\s*)?Marks\s*[\:\-]?\s*([\d\.]+)/i);
+    const negMatch = line.match(/^\s*(?:Negative\s*Marks|Negative)\s*[\:\-]?\s*([\d\.]+)/i);
+
+    const isMetadata = !!(expMatch || hintMatch || diffMatch || marksMatch || negMatch);
+
+    const shouldStartNew = !currentQuestion || 
+                           isQuestionStarter || 
+                           (currentQuestion.isComplete && optMatch);
+
+    if (shouldStartNew) {
+      commitCurrent();
+      currentQuestion = {
+        textLines: [],
+        options: [],
+        answerText: "",
+        explanation: "",
+        hint: "",
+        difficulty: "medium",
+        positiveMarks: 1,
+        negativeMarks: 0.25,
+        isComplete: false,
+      };
+    }
+
+    if (!currentQuestion) continue;
+
+    if (isQuestionStarter) {
+      const prefixMatch = line.match(/^(?:Q(?:uestion)?\s*\d*\s*[\.\:\)]+|Question\b|\d+\s*[\.\:\)]+)\s*/i);
+      const content = prefixMatch ? line.slice(prefixMatch[0].length).trim() : line;
+      if (content) {
+        currentQuestion.textLines.push(content);
+      }
+    } else if (optMatch) {
+      const optVal = optMatch[4].trim();
+      currentQuestion.options.push({ text: optVal, isCorrect: false });
+    } else if (ansMatch) {
+      currentQuestion.answerText = ansMatch[1].trim();
+      currentQuestion.isComplete = true;
+    } else if (expMatch) {
+      currentQuestion.explanation = expMatch[1].trim();
+    } else if (hintMatch) {
+      currentQuestion.hint = hintMatch[1].trim();
+    } else if (diffMatch) {
+      currentQuestion.difficulty = diffMatch[1].toLowerCase() as any;
+    } else if (marksMatch) {
+      currentQuestion.positiveMarks = parseFloat(marksMatch[1]) || 1;
+    } else if (negMatch) {
+      currentQuestion.negativeMarks = parseFloat(negMatch[1]) || 0;
+    } else {
+      if (currentQuestion.explanation) {
+        currentQuestion.explanation += "\n" + line;
+      } else if (currentQuestion.isComplete) {
+        currentQuestion.explanation = line;
+      } else {
+        currentQuestion.textLines.push(line);
+      }
+    }
+  }
+
+  commitCurrent();
   return questions;
 }
 
@@ -374,7 +376,7 @@ export async function parseOCRImage(buffer: Buffer): Promise<ParsedQuestion[]> {
     await worker.terminate();
     return parseRawText(ret.data.text);
   } catch (err) {
-    console.error("OCR Image parsing failed:", err);
+    logger.error({ err }, "OCR Image parsing failed");
     return [];
   }
 }
@@ -424,7 +426,7 @@ export async function parseDocument(
         ];
       }
     } catch (err) {
-      console.error("PDF parse failed:", err);
+      logger.error({ err }, "PDF parse failed");
       questions = [
         {
           text: "⚠️ Failed to parse this PDF. The file may be corrupted or password-protected.",

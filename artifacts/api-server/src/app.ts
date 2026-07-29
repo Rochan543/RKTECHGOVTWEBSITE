@@ -49,4 +49,25 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 app.use("/api", router);
 
+// Global Error Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error(err, "Unhandled Express error");
+
+  const statusCode = err.status || err.statusCode || 500;
+  let message = "An unexpected error occurred.";
+
+  if (statusCode < 500) {
+    message = err.message || "Client error";
+  } else {
+    // Hide raw Postgres/drizzle/Cloudinary connection and query details in 500 errors
+    if (process.env.NODE_ENV !== "production") {
+      message = err.message || "Internal Server Error";
+    } else {
+      message = "Internal Server Error";
+    }
+  }
+
+  res.status(statusCode).json({ error: message });
+});
+
 export default app;

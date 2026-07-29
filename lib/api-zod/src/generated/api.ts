@@ -325,7 +325,12 @@ export const GetExamResponse = zod.object({
   "questionCount": zod.number(),
   "durationMinutes": zod.number().nullable(),
   "order": zod.number(),
-  "subjectId": zod.number().nullish()
+  "subjectId": zod.number().nullish(),
+  "isMandatory": zod.boolean().optional(),
+  "positiveMarks": zod.number().nullish(),
+  "negativeMarks": zod.number().nullish(),
+  "navigationRule": zod.enum(['free', 'lock_previous', 'sequential']).optional(),
+  "autoMove": zod.boolean().optional()
 })),
   "createdAt": zod.coerce.date()
 })
@@ -661,7 +666,8 @@ export const StartSessionResponse = zod.object({
   "status": zod.enum(['not_visited', 'visited', 'answered', 'marked', 'marked_answered']),
   "selectedOptionId": zod.number().nullish(),
   "timeSpentSeconds": zod.number().optional(),
-  "order": zod.number()
+  "order": zod.number(),
+  "sectionId": zod.number().optional()
 })),
   "sections": zod.array(zod.object({
   "id": zod.number(),
@@ -669,8 +675,16 @@ export const StartSessionResponse = zod.object({
   "questionCount": zod.number(),
   "durationMinutes": zod.number().nullable(),
   "order": zod.number(),
-  "subjectId": zod.number().nullish()
-}))
+  "subjectId": zod.number().nullish(),
+  "isMandatory": zod.boolean().optional(),
+  "positiveMarks": zod.number().nullish(),
+  "negativeMarks": zod.number().nullish(),
+  "navigationRule": zod.enum(['free', 'lock_previous', 'sequential']).optional(),
+  "autoMove": zod.boolean().optional()
+})),
+  "questionTimerSeconds": zod.number().nullish(),
+  "autoSave": zod.boolean().optional(),
+  "autoSubmit": zod.boolean().optional()
 })
 
 
@@ -721,7 +735,8 @@ export const GetSessionResponse = zod.object({
   "status": zod.enum(['not_visited', 'visited', 'answered', 'marked', 'marked_answered']),
   "selectedOptionId": zod.number().nullish(),
   "timeSpentSeconds": zod.number().optional(),
-  "order": zod.number()
+  "order": zod.number(),
+  "sectionId": zod.number().optional()
 })),
   "sections": zod.array(zod.object({
   "id": zod.number(),
@@ -729,8 +744,16 @@ export const GetSessionResponse = zod.object({
   "questionCount": zod.number(),
   "durationMinutes": zod.number().nullable(),
   "order": zod.number(),
-  "subjectId": zod.number().nullish()
-}))
+  "subjectId": zod.number().nullish(),
+  "isMandatory": zod.boolean().optional(),
+  "positiveMarks": zod.number().nullish(),
+  "negativeMarks": zod.number().nullish(),
+  "navigationRule": zod.enum(['free', 'lock_previous', 'sequential']).optional(),
+  "autoMove": zod.boolean().optional()
+})),
+  "questionTimerSeconds": zod.number().nullish(),
+  "autoSave": zod.boolean().optional(),
+  "autoSubmit": zod.boolean().optional()
 })
 
 
@@ -1096,7 +1119,8 @@ export const UpdateUserBody = zod.object({
   "status": zod.enum(['active', 'suspended']).optional(),
   "role": zod.enum(['student', 'admin', 'super_admin']).optional(),
   "name": zod.string().nullish(),
-  "phone": zod.string().nullish()
+  "phone": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish()
 })
 
 export const UpdateUserResponse = zod.object({

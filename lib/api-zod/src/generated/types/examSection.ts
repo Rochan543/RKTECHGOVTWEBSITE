@@ -5,6 +5,7 @@
  * SSC Exam Platform API
  * OpenAPI spec version: 1.0.0
  */
+import type { ExamSectionNavigationRule } from './examSectionNavigationRule';
 
 export interface ExamSection {
   id: number;
@@ -15,7 +16,11 @@ export interface ExamSection {
   order: number;
   /** @nullable */
   subjectId?: number | null;
-  navigationRule?: string;
-  autoMove?: boolean;
   isMandatory?: boolean;
+  /** @nullable */
+  positiveMarks?: number | null;
+  /** @nullable */
+  negativeMarks?: number | null;
+  navigationRule?: ExamSectionNavigationRule;
+  autoMove?: boolean;
 }

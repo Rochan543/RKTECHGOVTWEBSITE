@@ -194,7 +194,10 @@ export default function AdminQuestions() {
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / 20);
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['questions'] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/v1/questions'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/v1/admin/stats'] });
+  };
 
   const openCreate = () => { setForm(defaultForm()); setEditId(null); setDialogOpen(true); };
   const openEdit = (q: { id: number; text: string; type: string; difficulty: string; explanation: string | null; hint: string | null; positiveMarks: number; negativeMarks: number; subjectId: number; topicId: number; options: { id: number; text: string; isCorrect: boolean }[] }) => {
@@ -316,16 +319,44 @@ export default function AdminQuestions() {
                 </TableRow>
               ) : questions.map((q: { id: number; text: string; subjectName?: string | null; difficulty: string; positiveMarks: number; negativeMarks: number; options?: { id: number; text: string; isCorrect: boolean }[]; type: string; explanation?: string | null; hint?: string | null; subjectId: number; topicId?: number | null; topicName?: string | null }) => (
                 <TableRow key={q.id}>
-                  <TableCell className="max-w-xs">
-                    <p className="text-sm line-clamp-2">{q.text}</p>
+                  <TableCell className="max-w-md">
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{q.text}</p>
+                      {q.options && q.options.length > 0 && (
+                        <div className="mt-2 space-y-1 pl-2 border-l-2 border-muted text-xs text-muted-foreground">
+                          {q.options.map((opt, idx) => (
+                            <div key={idx} className={`flex items-start gap-1 ${opt.isCorrect ? 'text-green-600 dark:text-green-400 font-semibold' : ''}`}>
+                              <span>{String.fromCharCode(65 + idx)}.</span>
+                              <span>{opt.text}</span>
+                              {opt.isCorrect && <CheckCircle2 className="h-3 w-3 inline text-green-600 dark:text-green-400 ml-1 self-center" />}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                          Type: {q.type.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell><span className="text-xs text-muted-foreground">{q.subjectName ?? '—'}</span></TableCell>
+                  <TableCell>
+                    <div className="text-xs">
+                      <span className="font-semibold block">{q.subjectName ?? '—'}</span>
+                      {q.topicName && <span className="text-[10px] text-muted-foreground block mt-0.5">{q.topicName}</span>}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={DIFFICULTY_COLORS[q.difficulty as keyof typeof DIFFICULTY_COLORS] ?? 'outline'} className="text-xs capitalize">
                       {q.difficulty}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">+{q.positiveMarks} / -{q.negativeMarks}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    <div className="space-y-0.5">
+                      <span className="text-green-600 dark:text-green-400 block font-semibold">+{q.positiveMarks}</span>
+                      <span className="text-destructive block font-semibold">-{q.negativeMarks}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit({ ...q, explanation: q.explanation ?? null, hint: q.hint ?? null, topicId: q.topicId ?? 0, options: q.options ?? [] })}>
@@ -538,7 +569,7 @@ export default function AdminQuestions() {
 
             {/* Preview Summary */}
             {importReport && (
-              <div className="grid grid-cols-3 gap-2 bg-muted/40 p-3 rounded-lg text-center text-xs">
+              <div className="grid grid-cols-4 gap-2 bg-muted/40 p-3 rounded-lg text-center text-xs">
                 <div>
                   <p className="text-muted-foreground font-semibold">Total Parsed</p>
                   <p className="text-lg font-bold">{importReport.totalRecords}</p>
@@ -548,8 +579,12 @@ export default function AdminQuestions() {
                   <p className="text-lg font-bold text-green-600">{importPreview.filter(q => q.isValid !== false).length}</p>
                 </div>
                 <div>
-                  <p className="text-destructive font-semibold">Invalid (Will Skip)</p>
+                  <p className="text-destructive font-semibold">Invalid</p>
                   <p className="text-lg font-bold text-destructive">{importPreview.filter(q => q.isValid === false).length}</p>
+                </div>
+                <div>
+                  <p className="text-amber-600 font-semibold font-bold">Warnings</p>
+                  <p className="text-lg font-bold text-amber-600">{importReport.skippedRecords.length}</p>
                 </div>
               </div>
             )}

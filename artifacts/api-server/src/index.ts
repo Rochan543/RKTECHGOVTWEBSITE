@@ -17,11 +17,24 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
 
   logger.info({ port }, "Server listening");
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error(reason instanceof Error ? reason : new Error(String(reason)), "Unhandled Promise Rejection");
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error(error, "Uncaught Exception");
+  server.close(() => {
+    process.exit(1);
+  });
+  // Force exit after a short timeout if server.close hangs
+  setTimeout(() => process.exit(1), 1000);
 });

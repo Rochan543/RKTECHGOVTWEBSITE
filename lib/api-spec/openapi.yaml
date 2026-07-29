@@ -1151,6 +1151,8 @@ components:
           type: ["string", "null"]
         phone:
           type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
 
     UserListResponse:
       type: object
@@ -1375,6 +1377,17 @@ components:
           type: number
         subjectId:
           type: ["number", "null"]
+        isMandatory:
+          type: boolean
+        positiveMarks:
+          type: ["number", "null"]
+        negativeMarks:
+          type: ["number", "null"]
+        navigationRule:
+          type: string
+          enum: [free, lock_previous, sequential]
+        autoMove:
+          type: boolean
 
     ExamInput:
       type: object
@@ -1400,6 +1413,12 @@ components:
         status:
           type: string
           enum: [draft, published]
+        scheduledAt:
+          type: ["string", "null"]
+        endsAt:
+          type: ["string", "null"]
+        timezone:
+          type: ["string", "null"]
 
     ExamUpdate:
       type: object
@@ -1413,6 +1432,23 @@ components:
           enum: [draft, published, archived, null]
         durationMinutes:
           type: ["number", "null"]
+        totalMarks:
+          type: ["number", "null"]
+        positiveMarks:
+          type: ["number", "null"]
+        negativeMarks:
+          type: ["number", "null"]
+        categoryId:
+          type: ["number", "null"]
+        type:
+          type: ["string", "null"]
+          enum: [full_mock, mini_mock, topic_test, chapter_test, daily_quiz, weekly_quiz, pyq, sectional]
+        scheduledAt:
+          type: ["string", "null"]
+        endsAt:
+          type: ["string", "null"]
+        timezone:
+          type: ["string", "null"]
 
     ExamListResponse:
       type: object
@@ -1680,6 +1716,8 @@ components:
           type: number
         order:
           type: number
+        sectionId:
+          type: number
 
     SessionOption:
       type: object
@@ -1720,6 +1758,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExamSection"
+        questionTimerSeconds:
+          type: ["number", "null"]
+        autoSave:
+          type: boolean
+        autoSubmit:
+          type: boolean
 
     AnswerInput:
       type: object

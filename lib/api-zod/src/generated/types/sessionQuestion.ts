@@ -21,6 +21,5 @@ export interface SessionQuestion {
   selectedOptionId?: number | null;
   timeSpentSeconds?: number;
   order: number;
-  /** @nullable */
-  sectionId?: number | null;
+  sectionId?: number;
 }

@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
+import { logger } from "../../lib/logger";
 import {
   db,
+  pool,
   usersTable,
   examsTable,
   questionsTable,
@@ -82,7 +84,8 @@ router.get(
   async (_req, res): Promise<void> => {
     const start = Date.now();
     try {
-      await db.execute(sql`SELECT 1`);
+      const versionRes = await db.execute<{ version: string }>(sql`SELECT version()`);
+      const dbVersion = versionRes.rows[0]?.version || "unknown";
       const dbLatency = Date.now() - start;
 
       res.json({
@@ -91,13 +94,38 @@ router.get(
         uptime: process.uptime(),
         memory: process.memoryUsage(),
         nodeVersion: process.version,
-        database: { status: "connected", latencyMs: dbLatency },
+        database: {
+          status: "connected",
+          connectionState: "connected",
+          latencyMs: dbLatency,
+          version: dbVersion,
+          pool: {
+            total: pool.totalCount,
+            idle: pool.idleCount,
+            waiting: pool.waitingCount,
+          }
+        },
       });
     } catch (err) {
-      res.status(500).json({
+      logger.error({ err }, "Database health check failed");
+      res.json({
         status: "unhealthy",
         timestamp: new Date().toISOString(),
-        database: { status: "error", error: String(err) },
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        nodeVersion: process.version,
+        database: {
+          status: "disconnected",
+          connectionState: "disconnected",
+          latencyMs: null,
+          version: "unknown",
+          pool: {
+            total: pool.totalCount,
+            idle: pool.idleCount,
+            waiting: pool.waitingCount,
+          },
+          error: "Database connection failed"
+        },
       });
     }
   }

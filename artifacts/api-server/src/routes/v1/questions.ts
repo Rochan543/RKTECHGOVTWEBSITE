@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "../../middlewares/auth";
+import { createNotificationForStudents, createNotificationForAdmins } from "../../lib/notifications";
 import {
   ListQuestionsQueryParams,
   CreateQuestionBody,
@@ -20,9 +21,11 @@ import {
 const router: IRouter = Router();
 
 async function buildQuestion(q: typeof questionsTable.$inferSelect) {
-  const options = await db.select().from(questionOptionsTable).where(eq(questionOptionsTable.questionId, q.id));
-  const [subject] = await db.select({ name: subjectsTable.name }).from(subjectsTable).where(eq(subjectsTable.id, q.subjectId));
-  const [topic] = await db.select({ name: topicsTable.name }).from(topicsTable).where(eq(topicsTable.id, q.topicId));
+  const [options, subject, topic] = await Promise.all([
+    db.select().from(questionOptionsTable).where(eq(questionOptionsTable.questionId, q.id)),
+    q.subjectId ? db.select({ name: subjectsTable.name }).from(subjectsTable).where(eq(subjectsTable.id, q.subjectId)).then(r => r[0]) : null,
+    q.topicId ? db.select({ name: topicsTable.name }).from(topicsTable).where(eq(topicsTable.id, q.topicId)).then(r => r[0]) : null,
+  ]);
   return {
     id: q.id,
     text: q.text,
@@ -51,16 +54,64 @@ router.get("/v1/questions", async (req, res): Promise<void> => {
   const { page = 1, limit = 20, subjectId, topicId, difficulty, type, search } = params.data;
   const offset = (page - 1) * limit;
 
-  let questions = await db.select().from(questionsTable);
-  if (subjectId) questions = questions.filter(q => q.subjectId === subjectId);
-  if (topicId) questions = questions.filter(q => q.topicId === topicId);
-  if (difficulty) questions = questions.filter(q => q.difficulty === difficulty);
-  if (type) questions = questions.filter(q => q.type === type);
-  if (search) questions = questions.filter(q => q.text.toLowerCase().includes(search.toLowerCase()));
+  const { and, eq, ilike, inArray, count: countFn } = await import("drizzle-orm");
 
-  const total = questions.length;
-  const paged = questions.slice(offset, offset + limit);
-  const data = await Promise.all(paged.map(buildQuestion));
+  const conditions = [];
+  if (subjectId) conditions.push(eq(questionsTable.subjectId, subjectId));
+  if (topicId) conditions.push(eq(questionsTable.topicId, topicId));
+  if (difficulty) conditions.push(eq(questionsTable.difficulty, difficulty));
+  if (type) conditions.push(eq(questionsTable.type, type));
+  if (search) conditions.push(ilike(questionsTable.text, `%${search}%`));
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [countResult] = await db
+    .select({ val: countFn() })
+    .from(questionsTable)
+    .where(whereClause);
+  const total = Number(countResult?.val ?? 0);
+
+  const pagedResults = await db
+    .select({
+      question: questionsTable,
+      subjectName: subjectsTable.name,
+      topicName: topicsTable.name,
+    })
+    .from(questionsTable)
+    .leftJoin(subjectsTable, eq(questionsTable.subjectId, subjectsTable.id))
+    .leftJoin(topicsTable, eq(questionsTable.topicId, topicsTable.id))
+    .where(whereClause)
+    .limit(limit)
+    .offset(offset);
+
+  const questionIds = pagedResults.map(r => r.question.id);
+  const allOptions = questionIds.length > 0
+    ? await db.select().from(questionOptionsTable).where(inArray(questionOptionsTable.questionId, questionIds))
+    : [];
+
+  const data = pagedResults.map(r => {
+    const q = r.question;
+    const options = allOptions
+      .filter(o => o.questionId === q.id)
+      .map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect }));
+    return {
+      id: q.id,
+      text: q.text,
+      type: q.type,
+      difficulty: q.difficulty,
+      explanation: q.explanation ?? null,
+      hint: q.hint ?? null,
+      imageUrl: q.imageUrl ?? null,
+      positiveMarks: q.positiveMarks,
+      negativeMarks: q.negativeMarks,
+      subjectId: q.subjectId,
+      topicId: q.topicId,
+      subjectName: r.subjectName ?? null,
+      topicName: r.topicName ?? null,
+      options,
+      createdAt: q.createdAt,
+    };
+  });
 
   res.json({ data, total, page, limit });
 });
@@ -133,6 +184,8 @@ router.put("/v1/questions/:id", requireAdmin, async (req, res): Promise<void> =>
     res.status(404).json({ error: "Question not found" });
     return;
   }
+  const [subject] = await db.select({ name: subjectsTable.name }).from(subjectsTable).where(eq(subjectsTable.id, q.subjectId));
+  await createNotificationForAdmins("Question Updated", `A question has been updated in the Question Bank under Subject '${subject?.name ?? ""}'.`, "system");
   res.json(await buildQuestion(q));
 });
 
@@ -156,6 +209,8 @@ router.post("/v1/questions/bulk", requireAdmin, async (req, res): Promise<void> 
     return;
   }
   const created: unknown[] = [];
+  let lastSubjectId: number | null = null;
+  let lastTopicId: number | null = null;
   for (const item of parsed.data) {
     const { options, ...rest } = item;
     const [q] = await db.insert(questionsTable).values({
@@ -179,7 +234,18 @@ router.post("/v1/questions/bulk", requireAdmin, async (req, res): Promise<void> 
       });
     }
     created.push({ id: q.id });
+    lastSubjectId = rest.subjectId;
+    lastTopicId = rest.topicId;
   }
+
+  // Trigger Notifications
+  if (created.length > 0 && lastSubjectId && lastTopicId) {
+    const [subject] = await db.select({ name: subjectsTable.name }).from(subjectsTable).where(eq(subjectsTable.id, lastSubjectId));
+    const [topic] = await db.select({ name: topicsTable.name }).from(topicsTable).where(eq(topicsTable.id, lastTopicId));
+    await createNotificationForAdmins("Questions Imported", `Successfully imported ${created.length} questions for Subject: ${subject?.name ?? ""} / Topic: ${topic?.name ?? ""}.`, "system");
+    await createNotificationForStudents("New Questions Added", `New practice questions have been added to Subject: ${subject?.name ?? ""} / Topic: ${topic?.name ?? ""}.`, "announcement", "/practice");
+  }
+
   res.status(201).json({ created: created.length, ids: created });
 });
 

@@ -15,4 +15,6 @@ export interface UserUpdate {
   name?: string | null;
   /** @nullable */
   phone?: string | null;
+  /** @nullable */
+  avatarUrl?: string | null;
 }

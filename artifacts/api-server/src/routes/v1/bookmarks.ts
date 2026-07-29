@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, bookmarksTable, questionsTable, questionOptionsTable, subjectsTable, topicsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../../middlewares/auth";
 import { z } from "zod";
 
@@ -11,35 +11,63 @@ const RemoveBookmarkParams = z.object({ questionId: z.coerce.number().int().posi
 
 router.get("/v1/bookmarks", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const userId = req.userId!;
-  const bookmarks = await db.select().from(bookmarksTable).where(eq(bookmarksTable.userId, userId));
+  const bookmarks = await db.select({
+    bookmarkId: bookmarksTable.id,
+    bookmarkedAt: bookmarksTable.createdAt,
+    questionId: questionsTable.id,
+    questionText: questionsTable.text,
+    questionType: questionsTable.type,
+    questionDifficulty: questionsTable.difficulty,
+    questionExplanation: questionsTable.explanation,
+    questionHint: questionsTable.hint,
+    questionImageUrl: questionsTable.imageUrl,
+    questionPositiveMarks: questionsTable.positiveMarks,
+    questionNegativeMarks: questionsTable.negativeMarks,
+    subjectName: subjectsTable.name,
+    topicName: topicsTable.name,
+  })
+    .from(bookmarksTable)
+    .innerJoin(questionsTable, eq(bookmarksTable.questionId, questionsTable.id))
+    .leftJoin(subjectsTable, eq(questionsTable.subjectId, subjectsTable.id))
+    .leftJoin(topicsTable, eq(questionsTable.topicId, topicsTable.id))
+    .where(eq(bookmarksTable.userId, userId));
 
-  const result = await Promise.all(bookmarks.map(async (b) => {
-    const [q] = await db.select().from(questionsTable).where(eq(questionsTable.id, b.questionId));
-    if (!q) return null;
-    const options = await db.select().from(questionOptionsTable).where(eq(questionOptionsTable.questionId, q.id));
-    const [subject] = await db.select({ name: subjectsTable.name }).from(subjectsTable).where(eq(subjectsTable.id, q.subjectId));
-    const [topic] = await db.select({ name: topicsTable.name }).from(topicsTable).where(eq(topicsTable.id, q.topicId));
+  const questionIds = bookmarks.map(b => b.questionId);
+  const optionsList = questionIds.length > 0
+    ? await db.select().from(questionOptionsTable).where(inArray(questionOptionsTable.questionId, questionIds))
+    : [];
+
+  const optionsMap = new Map<number, typeof questionOptionsTable.$inferSelect[]>();
+  for (const o of optionsList) {
+    if (!optionsMap.has(o.questionId)) {
+      optionsMap.set(o.questionId, []);
+    }
+    optionsMap.get(o.questionId)!.push(o);
+  }
+
+  const result = bookmarks.map((b) => {
+    const options = optionsMap.get(b.questionId) ?? [];
     return {
-      bookmarkId: b.id,
-      bookmarkedAt: b.createdAt,
+      bookmarkId: b.bookmarkId,
+      bookmarkedAt: b.bookmarkedAt,
       question: {
-        id: q.id,
-        text: q.text,
-        type: q.type,
-        difficulty: q.difficulty,
-        explanation: q.explanation ?? null,
-        hint: q.hint ?? null,
-        imageUrl: q.imageUrl ?? null,
-        positiveMarks: q.positiveMarks,
-        negativeMarks: q.negativeMarks,
-        subjectName: subject?.name ?? null,
-        topicName: topic?.name ?? null,
+        id: b.questionId,
+        text: b.questionText,
+        type: b.questionType,
+        difficulty: b.questionDifficulty,
+        explanation: b.questionExplanation ?? null,
+        hint: b.questionHint ?? null,
+        imageUrl: b.questionImageUrl ?? null,
+        positiveMarks: b.questionPositiveMarks,
+        negativeMarks: b.questionNegativeMarks,
+        subjectName: b.subjectName ?? null,
+        topicName: b.topicName ?? null,
         options: options.map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect })),
       },
     };
-  }));
+  });
 
-  res.json(result.filter(Boolean));
+  res.json(result);
 });
 
 router.post("/v1/bookmarks", requireAuth, async (req: AuthRequest, res): Promise<void> => {

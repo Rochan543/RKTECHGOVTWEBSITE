@@ -54,54 +54,95 @@ export default function AdminNotes() {
   const [lastFile, setLastFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = (file: File) => {
     setLastFile(file);
     setUploadError(null);
     setIsUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
     try {
       const reader = new FileReader();
-      reader.onload = async (e) => {
+      reader.onload = () => {
         try {
-          setUploadProgress(30);
-          const raw = e.target?.result as string;
+          const raw = reader.result as string;
           const base64Content = raw.split(',')[1] || raw;
 
-          setUploadProgress(50);
-          const uploadRes = await customFetch('/api/v1/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fileName: file.name,
-              mimeType: file.type || 'application/octet-stream',
-              fileData: base64Content,
-            }),
-          }) as any;
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/v1/upload');
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.withCredentials = true;
 
-          setUploadProgress(90);
-          setForm(f => ({
-            ...f,
-            fileUrl: uploadRes.fileUrl,
-            size: String(uploadRes.fileSize || file.size),
-            type: file.name.endsWith('.pdf') ? 'pdf' : 
-                  file.name.endsWith('.docx') ? 'docx' : 
-                  file.name.endsWith('.ppt') || file.name.endsWith('.pptx') ? 'ppt' : 
-                  file.type.startsWith('video/') ? 'video' : 
-                  file.type.startsWith('image/') ? 'image' : f.type,
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.round((event.loaded / event.total) * 100);
+              setUploadProgress(Math.min(95, percent));
+            }
+          };
+
+          xhr.onload = () => {
+            try {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                const uploadRes = JSON.parse(xhr.responseText);
+                setUploadProgress(100);
+                setForm(f => ({
+                  ...f,
+                  fileUrl: uploadRes.fileUrl,
+                  size: String(uploadRes.fileSize || file.size),
+                  type: file.name.endsWith('.pdf') ? 'pdf' : 
+                        file.name.endsWith('.docx') ? 'docx' : 
+                        file.name.endsWith('.ppt') || file.name.endsWith('.pptx') ? 'ppt' : 
+                        file.type.startsWith('video/') ? 'video' : 
+                        file.type.startsWith('image/') ? 'image' : f.type,
+                }));
+                setUploadError(null);
+                toast({ title: 'File uploaded successfully' });
+              } else {
+                let errorMsg = 'Upload failed';
+                try {
+                  const parsed = JSON.parse(xhr.responseText);
+                  errorMsg = parsed.error || errorMsg;
+                } catch {
+                  errorMsg = `Server error: ${xhr.status}`;
+                }
+                throw new Error(errorMsg);
+              }
+            } catch (err: any) {
+              const msg = err.message || String(err);
+              const displayMsg = (msg.includes("not configured") || msg.includes("503"))
+                ? 'Storage provider is not configured.'
+                : msg;
+              setUploadError(displayMsg);
+              toast({ title: 'Upload failed', description: displayMsg, variant: 'destructive' });
+            } finally {
+              setIsUploading(false);
+              setUploadProgress(0);
+            }
+          };
+
+          xhr.onerror = () => {
+            setUploadError('Network error during upload.');
+            toast({ title: 'Upload failed', description: 'Network error during upload.', variant: 'destructive' });
+            setIsUploading(false);
+            setUploadProgress(0);
+          };
+
+          xhr.send(JSON.stringify({
+            fileName: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            fileData: base64Content,
           }));
-          setUploadError(null);
-          toast({ title: 'File uploaded successfully' });
         } catch (err: any) {
           const msg = err.message || String(err);
-          const displayMsg = (msg.includes("not configured") || msg.includes("503"))
-            ? 'Storage provider is not configured.'
-            : msg;
-          setUploadError(displayMsg);
-          toast({ title: 'Upload failed', description: displayMsg, variant: 'destructive' });
-        } finally {
+          setUploadError(msg);
+          toast({ title: 'Upload failed', description: msg, variant: 'destructive' });
           setIsUploading(false);
           setUploadProgress(0);
         }
+      };
+      reader.onerror = () => {
+        setUploadError('Failed to read local file.');
+        toast({ title: 'Upload failed', description: 'Failed to read local file.', variant: 'destructive' });
+        setIsUploading(false);
+        setUploadProgress(0);
       };
       reader.readAsDataURL(file);
     } catch (err: any) {

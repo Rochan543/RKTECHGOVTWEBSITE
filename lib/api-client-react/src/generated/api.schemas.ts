@@ -154,6 +154,8 @@ export interface UserUpdate {
   name?: string | null;
   /** @nullable */
   phone?: string | null;
+  /** @nullable */
+  avatarUrl?: string | null;
 }
 
 export interface UserListResponse {
@@ -261,6 +263,15 @@ export interface Exam {
   createdAt: string;
 }
 
+export type ExamSectionNavigationRule = typeof ExamSectionNavigationRule[keyof typeof ExamSectionNavigationRule];
+
+
+export const ExamSectionNavigationRule = {
+  free: 'free',
+  lock_previous: 'lock_previous',
+  sequential: 'sequential',
+} as const;
+
 export interface ExamSection {
   id: number;
   name: string;
@@ -270,9 +281,13 @@ export interface ExamSection {
   order: number;
   /** @nullable */
   subjectId?: number | null;
-  navigationRule?: string;
-  autoMove?: boolean;
   isMandatory?: boolean;
+  /** @nullable */
+  positiveMarks?: number | null;
+  /** @nullable */
+  negativeMarks?: number | null;
+  navigationRule?: ExamSectionNavigationRule;
+  autoMove?: boolean;
 }
 
 export interface ExamDetail {
@@ -332,6 +347,12 @@ export interface ExamInput {
   /** @nullable */
   categoryId?: number | null;
   status?: ExamInputStatus;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
 }
 
 /**
@@ -346,6 +367,23 @@ export const ExamUpdateStatus = {
   archived: 'archived',
 } as const;
 
+/**
+ * @nullable
+ */
+export type ExamUpdateType = typeof ExamUpdateType[keyof typeof ExamUpdateType] | null;
+
+
+export const ExamUpdateType = {
+  full_mock: 'full_mock',
+  mini_mock: 'mini_mock',
+  topic_test: 'topic_test',
+  chapter_test: 'chapter_test',
+  daily_quiz: 'daily_quiz',
+  weekly_quiz: 'weekly_quiz',
+  pyq: 'pyq',
+  sectional: 'sectional',
+} as const;
+
 export interface ExamUpdate {
   /** @nullable */
   title?: string | null;
@@ -355,6 +393,22 @@ export interface ExamUpdate {
   status?: ExamUpdateStatus;
   /** @nullable */
   durationMinutes?: number | null;
+  /** @nullable */
+  totalMarks?: number | null;
+  /** @nullable */
+  positiveMarks?: number | null;
+  /** @nullable */
+  negativeMarks?: number | null;
+  /** @nullable */
+  categoryId?: number | null;
+  /** @nullable */
+  type?: ExamUpdateType;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
 }
 
 export interface ExamListResponse {
@@ -582,8 +636,7 @@ export interface SessionQuestion {
   selectedOptionId?: number | null;
   timeSpentSeconds?: number;
   order: number;
-  /** @nullable */
-  sectionId?: number | null;
+  sectionId?: number;
 }
 
 export interface SessionDetail {
@@ -596,12 +649,12 @@ export interface SessionDetail {
   submittedAt?: string | null;
   durationMinutes: number;
   currentSectionIndex?: number;
+  questions: SessionQuestion[];
+  sections: ExamSection[];
   /** @nullable */
   questionTimerSeconds?: number | null;
   autoSave?: boolean;
   autoSubmit?: boolean;
-  questions: SessionQuestion[];
-  sections: ExamSection[];
 }
 
 export type AnswerInputStatus = typeof AnswerInputStatus[keyof typeof AnswerInputStatus];

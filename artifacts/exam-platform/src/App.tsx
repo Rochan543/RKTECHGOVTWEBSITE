@@ -1,49 +1,54 @@
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import Lottie from 'lottie-react';
+import splashAnimation from '@/components/splash-animation.json';
 
 // Layouts
 import { DashboardLayout } from '@/components/layout';
 
-// Pages
+// Pages (Static)
 import Login from '@/pages/login';
 import Register from '@/pages/register';
 import ForgotPassword from '@/pages/forgot-password';
-import Dashboard from '@/pages/dashboard';
-import Exams from '@/pages/exams';
-import ExamDetail from '@/pages/exam-detail';
-import ExamEngine from '@/pages/exam-engine';
-import Results from '@/pages/results';
-import ResultDetail from '@/pages/result-detail';
-import Leaderboard from '@/pages/leaderboard';
-import Notes from '@/pages/notes';
-import Profile from '@/pages/profile';
-import Notifications from '@/pages/notifications';
-import Performance from '@/pages/performance';
-import Practice from '@/pages/practice';
-import WrongAnswers from '@/pages/wrong-answers';
-import Bookmarks from '@/pages/bookmarks';
-import Settings from '@/pages/settings';
-import DailyGK from '@/pages/daily-gk';
-import Achievements from '@/pages/achievements';
 
-// Admin Pages
-import AdminDashboard from '@/pages/admin-dashboard';
-import AdminExams from '@/pages/admin-exams';
-import AdminExamForm from '@/pages/admin-exam-form';
-import AdminQuestions from '@/pages/admin-questions';
-import AdminSubjects from '@/pages/admin-subjects';
-import AdminUsers from '@/pages/admin-users';
-import AdminNotes from '@/pages/admin-notes';
-import AdminCurrentAffairs from '@/pages/admin-current-affairs';
+// Pages (Lazy)
+const Dashboard = React.lazy(() => import('@/pages/dashboard'));
+const Exams = React.lazy(() => import('@/pages/exams'));
+const ExamDetail = React.lazy(() => import('@/pages/exam-detail'));
+const ExamEngine = React.lazy(() => import('@/pages/exam-engine'));
+const Results = React.lazy(() => import('@/pages/results'));
+const ResultDetail = React.lazy(() => import('@/pages/result-detail'));
+const Leaderboard = React.lazy(() => import('@/pages/leaderboard'));
+const Notes = React.lazy(() => import('@/pages/notes'));
+const Profile = React.lazy(() => import('@/pages/profile'));
+const Notifications = React.lazy(() => import('@/pages/notifications'));
+const Performance = React.lazy(() => import('@/pages/performance'));
+const Practice = React.lazy(() => import('@/pages/practice'));
+const WrongAnswers = React.lazy(() => import('@/pages/wrong-answers'));
+const Bookmarks = React.lazy(() => import('@/pages/bookmarks'));
+const Settings = React.lazy(() => import('@/pages/settings'));
+const DailyGK = React.lazy(() => import('@/pages/daily-gk'));
+const Achievements = React.lazy(() => import('@/pages/achievements'));
 
-// New Pages
-import SuperAdmin from '@/pages/super-admin';
-import Certificates from '@/pages/certificates';
-import StudyPlanner from '@/pages/study-planner';
+// Admin Pages (Lazy)
+const AdminDashboard = React.lazy(() => import('@/pages/admin-dashboard'));
+const AdminExams = React.lazy(() => import('@/pages/admin-exams'));
+const AdminExamForm = React.lazy(() => import('@/pages/admin-exam-form'));
+const AdminQuestions = React.lazy(() => import('@/pages/admin-questions'));
+const AdminSubjects = React.lazy(() => import('@/pages/admin-subjects'));
+const AdminUsers = React.lazy(() => import('@/pages/admin-users'));
+const AdminNotes = React.lazy(() => import('@/pages/admin-notes'));
+const AdminCurrentAffairs = React.lazy(() => import('@/pages/admin-current-affairs'));
+
+// New Pages (Lazy)
+const SuperAdmin = React.lazy(() => import('@/pages/super-admin'));
+const Certificates = React.lazy(() => import('@/pages/certificates'));
+const StudyPlanner = React.lazy(() => import('@/pages/study-planner'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -110,8 +115,6 @@ function DashboardRoute({
     />
   );
 }
-
-import React from 'react';
 
 function NotFound() {
   return (
@@ -180,15 +183,132 @@ function Router() {
   );
 }
 
+export function prefetchRoute(path: string) {
+  if (path === '/dashboard') import('@/pages/dashboard');
+  else if (path.startsWith('/exams/')) import('@/pages/exam-detail');
+  else if (path === '/exams') import('@/pages/exams');
+  else if (path.startsWith('/results/')) import('@/pages/result-detail');
+  else if (path === '/results') import('@/pages/results');
+  else if (path === '/leaderboard') import('@/pages/leaderboard');
+  else if (path === '/notes') import('@/pages/notes');
+  else if (path === '/profile') import('@/pages/profile');
+  else if (path === '/notifications') import('@/pages/notifications');
+  else if (path === '/performance') import('@/pages/performance');
+  else if (path === '/practice') import('@/pages/practice');
+  else if (path === '/wrong-answers') import('@/pages/wrong-answers');
+  else if (path === '/bookmarks') import('@/pages/bookmarks');
+  else if (path === '/settings') import('@/pages/settings');
+  else if (path === '/daily-gk') import('@/pages/daily-gk');
+  else if (path === '/achievements') import('@/pages/achievements');
+  else if (path === '/certificates') import('@/pages/certificates');
+  else if (path === '/study-planner') import('@/pages/study-planner');
+  else if (path === '/super-admin') import('@/pages/super-admin');
+}
+
+function RouteTracker({ onReady }: { onReady: () => void }) {
+  React.useEffect(() => {
+    onReady();
+  }, [onReady]);
+  return null;
+}
+
+function SplashScreenWrapper({
+  children,
+  isAppReady,
+}: {
+  children: React.ReactNode;
+  isAppReady: boolean;
+}) {
+  const { isLoading: isAuthLoading } = useAuth();
+  const [showSplash, setShowSplash] = React.useState(true);
+  const [fadeOut, setFadeOut] = React.useState(false);
+  const [animationComplete, setAnimationComplete] = React.useState(false);
+
+  const isReady = !isAuthLoading && isAppReady;
+
+  React.useEffect(() => {
+    let timer: any = null;
+    if (isReady && animationComplete) {
+      setFadeOut(true);
+      timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 400);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [isReady, animationComplete]);
+
+  // Memoize Lottie element to prevent useless re-renders during state changes
+  const lottieElement = React.useMemo(() => {
+    return (
+      <Lottie
+        animationData={splashAnimation}
+        loop={false}
+        autoplay={true}
+        onComplete={() => setAnimationComplete(true)}
+        style={{
+          width: '100%',
+          height: '100%',
+          transform: 'scale(1.35)',
+          transformOrigin: 'center center',
+        }}
+      />
+    );
+  }, []);
+
+  return (
+    <>
+      <div
+        className="w-full h-full min-h-screen"
+        style={{
+          display: showSplash && !fadeOut ? 'none' : 'block',
+        }}
+      >
+        {children}
+      </div>
+      {showSplash && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 999999, // Ensure z-index is higher than all components
+            backgroundColor: '#ffffff', // Clean white background matching Lottie
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: fadeOut ? 0 : 1,
+            pointerEvents: fadeOut ? 'none' : 'auto',
+            transition: 'opacity 400ms ease-in-out',
+          }}
+        >
+          <div className="relative overflow-hidden flex items-center justify-center w-[200px] md:w-[260px] lg:w-[320px] max-w-[35vw] aspect-square">
+            {lottieElement}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function App() {
+  const [isAppReady, setIsAppReady] = React.useState(false);
+
   return (
     <ThemeProvider defaultTheme="light" storageKey="exam-platform-theme">
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-              <Router />
-            </WouterRouter>
+            <SplashScreenWrapper isAppReady={isAppReady}>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+                <React.Suspense fallback={null}>
+                  <RouteTracker onReady={() => setIsAppReady(true)} />
+                  <Router />
+                </React.Suspense>
+              </WouterRouter>
+            </SplashScreenWrapper>
             <Toaster />
           </TooltipProvider>
         </AuthProvider>

@@ -1,7 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter, useSidebar } from '@/components/ui/sidebar';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth';
+import { 
+  useListNotifications, 
+  getListNotificationsQueryKey,
+  getGetDashboardStatsQueryOptions,
+  getGetUpcomingTestsQueryOptions,
+  getGetRecentActivityQueryOptions,
+  getGetSubjectPerformanceQueryOptions,
+  getListResultsQueryOptions,
+  getListNotificationsQueryOptions,
+  getListExamsQueryOptions
+} from '@workspace/api-client-react';
+import { prefetchRoute } from '@/App';
 import {
   LayoutDashboard, FileText, BarChart2, Trophy, BookOpen, User as UserIcon,
   LogOut, ShieldCheck, Database, Menu, Bell, TrendingUp, Target, Bookmark,
@@ -9,10 +22,13 @@ import {
   Medal, Shield, Globe,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { optimizeCloudinaryUrl } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -25,11 +41,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background text-foreground">
         <Sidebar className="border-r">
-          <SidebarHeader className="h-16 flex items-center px-4 border-b">
-            <div className="font-bold text-xl tracking-tight text-primary flex items-center gap-2">
-              <ShieldCheck className="h-6 w-6" />
-              SSC Platform
-            </div>
+          <SidebarHeader className="flex flex-col items-center justify-center py-6 px-4 border-b gap-3">
+            <img src="/logo.png" alt="SSC Portal Logo" className="h-14 w-14 object-contain transition-transform hover:scale-105" />
+            <span className="font-extrabold text-2xl tracking-tight text-primary">
+              RK TECH Portal
+            </span>
           </SidebarHeader>
 
           <SidebarContent className="overflow-y-auto">
@@ -42,9 +58,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
           <SidebarFooter className="border-t p-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm flex-shrink-0">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={optimizeCloudinaryUrl(user.avatarUrl, { width: 40, height: 40 })} />
+                <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                  {user.name.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex flex-col flex-1 overflow-hidden">
                 <span className="text-sm font-medium truncate">{user.name}</span>
                 <span className="text-xs text-muted-foreground truncate capitalize">{user.role.replace('_', ' ')}</span>
@@ -60,7 +79,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <MobileHeader />
           <div className="flex-1 overflow-auto p-4 md:p-8">
-            {children}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.15, ease: 'easeInOut' }}
+                className="w-full h-full"
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>
@@ -72,24 +102,68 @@ function MobileHeader() {
   const { toggleSidebar, isMobile } = useSidebar();
   if (!isMobile) return null;
   return (
-    <header className="h-14 border-b flex items-center px-4 bg-background sticky top-0 z-10">
-      <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-        <Menu className="h-5 w-5" />
-      </Button>
-      <span className="ml-4 font-bold text-lg text-primary">SSC Platform</span>
+    <header className="h-16 border-b flex items-center px-4 bg-background/90 backdrop-blur-md sticky top-0 z-10 justify-between w-full transition-all">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="hover:bg-accent/50 rounded-xl" aria-label="Toggle Navigation Sidebar">
+          <Menu className="h-5 w-5 text-foreground" />
+        </Button>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="SSC Portal Logo" className="h-9 w-9 object-contain" />
+          <span className="font-extrabold text-xl tracking-tight text-primary">
+            RK TECH Portal
+          </span>
+        </div>
+      </div>
     </header>
   );
 }
 
-function NavItem({ href, label, icon: Icon, exact = false }: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean }) {
+function NavItem({ href, label, icon: Icon, exact = false, badge }: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; badge?: React.ReactNode }) {
   const [location] = useLocation();
   const isActive = exact ? location === href : location === href || location.startsWith(href + '/');
+  const queryClient = useQueryClient();
+
+  const handleMouseEnter = () => {
+    prefetchRoute(href);
+    try {
+      if (href === '/dashboard') {
+        queryClient.prefetchQuery(getGetDashboardStatsQueryOptions());
+        queryClient.prefetchQuery(getGetUpcomingTestsQueryOptions());
+        queryClient.prefetchQuery(getGetRecentActivityQueryOptions());
+        queryClient.prefetchQuery(getGetSubjectPerformanceQueryOptions());
+      } else if (href === '/results') {
+        queryClient.prefetchQuery(getListResultsQueryOptions({ limit: 50 }));
+      } else if (href === '/notifications') {
+        queryClient.prefetchQuery(getListNotificationsQueryOptions());
+      } else if (href === '/exams') {
+        queryClient.prefetchQuery(getListExamsQueryOptions({ limit: 100 }));
+      } else if (href === '/practice') {
+        queryClient.prefetchQuery(getListExamsQueryOptions({ limit: 100 }));
+        queryClient.prefetchQuery(getListResultsQueryOptions({ limit: 100 }));
+      }
+    } catch (e) {
+      console.warn("Failed to prefetch queries", e);
+    }
+  };
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive}>
-        <Link href={href} className="flex items-center gap-3">
-          <Icon className="h-4 w-4" />
-          <span>{label}</span>
+        <Link 
+          href={href}
+          onMouseEnter={handleMouseEnter}
+          onFocus={handleMouseEnter}
+          className={`flex items-center justify-between w-full transition-all duration-200 hover:pl-1.5 ${
+            isActive 
+              ? 'font-bold text-primary bg-primary/5 shadow-2xs border-l-2 border-primary pl-2' 
+              : 'hover:text-primary hover:bg-slate-50'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <Icon className={`h-4 w-4 transition-transform duration-200 ${isActive ? 'scale-110 text-primary' : 'text-muted-foreground group-hover:text-primary'}`} />
+            <span>{label}</span>
+          </div>
+          {badge}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -97,13 +171,64 @@ function NavItem({ href, label, icon: Icon, exact = false }: { href: string; lab
 }
 
 function StudentNav() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: any = null;
+
+    function connect() {
+      eventSource = new EventSource('/api/v1/notifications/stream');
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'new_notification') {
+            queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+          }
+        } catch (e) {
+          console.error("Error parsing notification stream data:", e);
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource?.close();
+        reconnectTimeout = setTimeout(connect, 5000);
+      };
+    }
+
+    connect();
+
+    return () => {
+      if (eventSource) eventSource.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+    };
+  }, [queryClient]);
+
+  const { data: notifications } = useListNotifications({
+    query: {
+      queryKey: getListNotificationsQueryKey(),
+      refetchInterval: 60000, // Poll notifications every 60s fallback, relying on SSE for instant unread badge!
+    }
+  });
+  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
   return (
     <>
       <SidebarGroup>
         <SidebarGroupLabel>Overview</SidebarGroupLabel>
         <SidebarMenu>
           <NavItem href="/dashboard" label="Dashboard" icon={LayoutDashboard} exact />
-          <NavItem href="/notifications" label="Notifications" icon={Bell} />
+          <NavItem 
+            href="/notifications" 
+            label="Notifications" 
+            icon={Bell} 
+            badge={unreadCount > 0 ? (
+              <span className="h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                {unreadCount}
+              </span>
+            ) : null}
+          />
         </SidebarMenu>
       </SidebarGroup>
 

@@ -41,20 +41,18 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-background">
-      <div className="w-full max-w-md space-y-8">
-        <Link href="/login" className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-50 via-indigo-50/20 to-slate-100 dark:from-slate-950 dark:via-indigo-950/10 dark:to-slate-900">
+      <div className="w-full max-w-md bg-card border border-border shadow-xl hover:shadow-2xl transition-shadow duration-300 rounded-3xl p-8 md:p-10 space-y-6">
+        <Link href="/login" className="inline-flex items-center text-sm font-semibold text-primary hover:text-indigo-700 transition-colors">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to login
         </Link>
         <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-              <ShieldCheck className="h-8 w-8" />
-            </div>
+          <div className="flex justify-center mb-6">
+            <img src="/logo.png" alt="SSC Portal Logo" className="h-20 w-20 object-contain transition-transform hover:scale-105" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Reset Password</h1>
-          <p className="text-muted-foreground mt-2">Enter your email and we'll send you a reset link.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Reset Password</h1>
+          <p className="text-muted-foreground mt-2 font-medium text-sm">Enter your email and we'll send you a password reset link.</p>
         </div>
 
         <Form {...form}>
@@ -64,16 +62,16 @@ export default function ForgotPassword() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email address</FormLabel>
+                  <FormLabel className="font-semibold text-foreground">Email address</FormLabel>
                   <FormControl>
-                    <Input placeholder="student@example.com" {...field} />
+                    <Input placeholder="student@example.com" {...field} className="rounded-xl border-slate-200/80 focus:border-primary" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             
-            <Button type="submit" className="w-full" disabled={mutation.isPending}>
+            <Button type="submit" className="w-full py-6 rounded-xl font-bold shadow-md hover:shadow-lg transition-all" disabled={mutation.isPending}>
               {mutation.isPending ? 'Sending...' : 'Send reset link'}
             </Button>
           </form>

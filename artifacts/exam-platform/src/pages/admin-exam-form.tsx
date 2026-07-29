@@ -7,6 +7,7 @@ import {
   useListExamCategories,
   useListSubjects,
   getListExamsQueryKey,
+  customFetch,
 } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Save, Loader2, Eye, Archive, Calendar, Clock, Plus, Trash } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Eye, Archive, Calendar, Clock, Plus, Trash, Search, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link } from 'wouter';
 
 type ExamType = 'full_mock' | 'mini_mock' | 'topic_test' | 'chapter_test' | 'daily_quiz' | 'weekly_quiz' | 'pyq' | 'sectional';
@@ -104,6 +107,150 @@ export default function AdminExamForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<ExamForm>(defaultForm());
+
+  const [selectedQuestions, setSelectedQuestions] = useState<{ id?: number; examId: number; sectionId: number | null; questionId: number; order: number }[]>([]);
+  
+  // Question Selector states
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectorSection, setSelectorSection] = useState<any | null>(null);
+  const [selectorTopicId, setSelectorTopicId] = useState<string>('');
+  const [selectorSearch, setSelectorSearch] = useState<string>('');
+  const [selectorDifficulty, setSelectorDifficulty] = useState<string>('');
+  const [selectorType, setSelectorType] = useState<string>('');
+  const [selectorPage, setSelectorPage] = useState(1);
+  const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
+  const [availableTotal, setAvailableTotal] = useState(0);
+  const [availableLoading, setAvailableLoading] = useState(false);
+  const [localSelectedIds, setLocalSelectedIds] = useState<number[]>([]);
+  const [topicsForSection, setTopicsForSection] = useState<any[]>([]);
+  const [isSavingQuestions, setIsSavingQuestions] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Fetch selected questions when editing
+  useEffect(() => {
+    if (isEdit && examId) {
+      customFetch(`/api/v1/exams/${examId}/questions`)
+        .then((res: any) => {
+          if (Array.isArray(res)) {
+            setSelectedQuestions(res);
+          }
+        })
+        .catch(err => console.error("Failed to load exam questions", err));
+    }
+  }, [isEdit, examId]);
+
+  // Fetch topics when selector opens
+  useEffect(() => {
+    if (selectorOpen && selectorSection?.subjectId) {
+      customFetch(`/api/v1/topics?subjectId=${selectorSection.subjectId}`)
+        .then((res: any) => {
+          if (Array.isArray(res)) {
+            setTopicsForSection(res);
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  }, [selectorOpen, selectorSection]);
+
+  // Sync selection to local state when opening
+  useEffect(() => {
+    if (selectorOpen && selectorSection) {
+      const sectionQIds = selectedQuestions
+        .filter(sq => sq.sectionId === selectorSection.id)
+        .map(sq => sq.questionId);
+      setLocalSelectedIds(sectionQIds);
+      setSelectorTopicId('');
+      setSelectorSearch('');
+      setSearchTerm('');
+      setSelectorDifficulty('');
+      setSelectorType('');
+      setSelectorPage(1);
+      setAvailableQuestions([]);
+      setAvailableTotal(0);
+    }
+  }, [selectorOpen, selectorSection, selectedQuestions]);
+
+  // Debounce search term
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSelectorSearch(searchTerm);
+      setSelectorPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Load available questions when filters change
+  useEffect(() => {
+    if (selectorOpen && selectorSection && selectorSection.subjectId) {
+      setAvailableLoading(true);
+      const queryParams = new URLSearchParams({
+        page: String(selectorPage),
+        limit: '15',
+        subjectId: String(selectorSection.subjectId),
+        status: 'active',
+        isPublished: 'true',
+        ...(selectorTopicId && { topicId: selectorTopicId }),
+        ...(selectorSearch && { search: selectorSearch }),
+        ...(selectorDifficulty && { difficulty: selectorDifficulty }),
+        ...(selectorType && { type: selectorType }),
+      });
+      customFetch(`/api/v1/questions?${queryParams.toString()}`)
+        .then((res: any) => {
+          if (res && Array.isArray(res.data)) {
+            setAvailableQuestions(res.data);
+            setAvailableTotal(res.total || 0);
+          }
+        })
+        .catch(err => console.error(err))
+        .finally(() => setAvailableLoading(false));
+    } else {
+      setAvailableQuestions([]);
+      setAvailableTotal(0);
+    }
+  }, [selectorOpen, selectorSection, selectorTopicId, selectorSearch, selectorDifficulty, selectorType, selectorPage]);
+
+  const handleSelectAll = () => {
+    const idsToAdd = availableQuestions.map(q => q.id);
+    setLocalSelectedIds(prev => Array.from(new Set([...prev, ...idsToAdd])));
+  };
+
+  const handleUnselectAll = () => {
+    const idsToRemove = availableQuestions.map(q => q.id);
+    setLocalSelectedIds(prev => prev.filter(id => !idsToRemove.includes(id)));
+  };
+
+  const handleSaveQuestions = async () => {
+    if (!examId || !selectorSection) return;
+    setIsSavingQuestions(true);
+    try {
+      const otherSectionsQuestions = selectedQuestions.filter(sq => sq.sectionId !== selectorSection.id);
+      const newSectionQuestions = localSelectedIds.map((qId, index) => ({
+        examId,
+        sectionId: selectorSection.id,
+        questionId: qId,
+        order: index + 1,
+      }));
+      const updated = [...otherSectionsQuestions, ...newSectionQuestions];
+
+      await customFetch(`/api/v1/exams/${examId}/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: updated }),
+      });
+
+      setSelectedQuestions(updated);
+      toast({ title: 'Questions saved successfully' });
+      setSelectorOpen(false);
+
+      queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+      queryClient.invalidateQueries({ queryKey: ['exam', examId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v1/admin/stats'] });
+    } catch (err: any) {
+      toast({ title: 'Failed to save questions', description: err.message || String(err), variant: 'destructive' });
+    } finally {
+      setIsSavingQuestions(false);
+    }
+  };
 
   // Load exam data when editing — getGetExamQueryOptions needs a queryKey
   const { data: existingExam, isLoading: examLoading } = useGetExam(
@@ -569,6 +716,20 @@ export default function AdminExamForm() {
                         />
                         Auto-Move to Next
                       </label>
+                      {isEdit && section.id && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectorSection(section);
+                            setSelectorOpen(true);
+                          }}
+                          className="mt-2 text-xs h-7 py-1 px-2 border-primary text-primary hover:bg-primary/5"
+                        >
+                          Select Questions ({selectedQuestions.filter(sq => sq.sectionId === section.id).length})
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -675,6 +836,198 @@ export default function AdminExamForm() {
           {isEdit ? 'Save Changes' : 'Create Exam'}
         </Button>
       </div>
+
+      {/* Question Selector Dialog */}
+      <Dialog open={selectorOpen} onOpenChange={setSelectorOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Select Questions - {selectorSection?.name}</DialogTitle>
+            <DialogDescription>
+              Choose questions to include in this section. Questions are filtered by the section's subject.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {!selectorSection?.subjectId ? (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+                <p className="text-destructive text-sm font-semibold">
+                  This section does not have a subject mapped. Please close this dialog, select a Subject for this section, and save the exam settings first.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Statistics Row */}
+                <div className="grid grid-cols-4 gap-4 bg-muted/40 p-3 rounded-lg text-center text-xs font-medium">
+                  <div>
+                    <p className="text-muted-foreground">Available Questions</p>
+                    <p className="text-lg font-bold text-foreground">{availableTotal}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Selected Questions</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">{localSelectedIds.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Total Questions (Exam)</p>
+                    <p className="text-lg font-bold text-blue-600">{selectedQuestions.filter(sq => sq.sectionId !== selectorSection.id).length + localSelectedIds.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Question Count (Section)</p>
+                    <p className="text-lg font-bold text-primary">{localSelectedIds.length}</p>
+                  </div>
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap gap-2">
+                  <div className="relative flex-1 min-w-48">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search questions…"
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="pl-8 h-9 text-xs"
+                    />
+                  </div>
+                  <Select value={selectorTopicId || 'all'} onValueChange={v => { setSelectorTopicId(v === 'all' ? '' : v); setSelectorPage(1); }}>
+                    <SelectTrigger className="w-36 h-9 text-xs"><SelectValue placeholder="Topic" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Topics</SelectItem>
+                      {topicsForSection.map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectorDifficulty || 'all'} onValueChange={v => { setSelectorDifficulty(v === 'all' ? '' : v); setSelectorPage(1); }}>
+                    <SelectTrigger className="w-28 h-9 text-xs"><SelectValue placeholder="Difficulty" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Diff</SelectItem>
+                      <SelectItem value="easy">Easy</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="hard">Hard</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectorType || 'all'} onValueChange={v => { setSelectorType(v === 'all' ? '' : v); setSelectorPage(1); }}>
+                    <SelectTrigger className="w-32 h-9 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="single_choice">Single Choice</SelectItem>
+                      <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                      <SelectItem value="true_false">True / False</SelectItem>
+                      <SelectItem value="integer">Integer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Bulk operations */}
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={handleSelectAll} className="text-xs h-8">
+                    Select All (Current Page)
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={handleUnselectAll} className="text-xs h-8">
+                    Unselect All (Current Page)
+                  </Button>
+                </div>
+
+                {/* Table of Available Questions */}
+                <div className="border rounded-md overflow-hidden bg-card">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-12 text-center">Select</TableHead>
+                        <TableHead>Question Text</TableHead>
+                        <TableHead className="w-24">Difficulty</TableHead>
+                        <TableHead className="w-24">Type</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {availableLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-32 text-center">
+                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground mt-1 block">Loading questions…</span>
+                          </TableCell>
+                        </TableRow>
+                      ) : availableQuestions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-24 text-center text-muted-foreground text-xs">
+                            No questions found for the selected subject/topic.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        availableQuestions.map((q: any) => {
+                          const isChecked = localSelectedIds.includes(q.id);
+                          return (
+                            <TableRow key={q.id} className="hover:bg-muted/10">
+                              <TableCell className="text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={e => {
+                                    if (e.target.checked) {
+                                      setLocalSelectedIds(prev => [...prev, q.id]);
+                                    } else {
+                                      setLocalSelectedIds(prev => prev.filter(id => id !== q.id));
+                                    }
+                                  }}
+                                  className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary accent-primary"
+                                />
+                              </TableCell>
+                              <TableCell className="max-w-xs">
+                                <div className="text-xs">
+                                  <p className="font-medium line-clamp-2">{q.text}</p>
+                                  {q.options && q.options.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
+                                      {q.options.map((o: any, oidx: number) => (
+                                        <span key={oidx} className={o.isCorrect ? "font-bold text-green-600 dark:text-green-400" : ""}>
+                                          {String.fromCharCode(65 + oidx)}) {o.text.slice(0, 15)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="capitalize text-xs">
+                                <Badge variant={q.difficulty === 'easy' ? 'secondary' : q.difficulty === 'hard' ? 'destructive' : 'outline'} className="text-[10px]">
+                                  {q.difficulty}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="capitalize text-xs text-muted-foreground">
+                                {q.type.replace('_', ' ')}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                {availableTotal > 15 && (
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Page {selectorPage} of {Math.ceil(availableTotal / 15)}</span>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" disabled={selectorPage <= 1} onClick={() => setSelectorPage(p => p - 1)} className="h-8 w-8 p-0">
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" disabled={selectorPage >= Math.ceil(availableTotal / 15)} onClick={() => setSelectorPage(p => p + 1)} className="h-8 w-8 p-0">
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectorOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveQuestions} disabled={isSavingQuestions || !selectorSection?.subjectId}>
+              {isSavingQuestions && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save Selection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Trophy, Medal, Crown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import { optimizeCloudinaryUrl } from '@/lib/utils';
 
 export default function Leaderboard() {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'overall'>('weekly');
@@ -76,7 +77,7 @@ export default function Leaderboard() {
                     </div>
                     <div className="col-span-6 md:col-span-5 flex items-center gap-3 overflow-hidden">
                       <Avatar className="h-10 w-10 border shadow-sm flex-shrink-0">
-                        <AvatarImage src={entry.avatarUrl || ''} />
+                        <AvatarImage src={optimizeCloudinaryUrl(entry.avatarUrl, { width: 80, height: 80 })} />
                         <AvatarFallback className={isCurrentUser ? 'bg-primary text-primary-foreground' : ''}>
                           {entry.name.substring(0, 2).toUpperCase()}
                         </AvatarFallback>

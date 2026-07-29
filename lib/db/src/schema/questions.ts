@@ -6,6 +6,7 @@ import {
   real,
   boolean,
   integer,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -46,7 +47,10 @@ export const questionsTable = pgTable("questions", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-});
+}, (table) => [
+  index("questions_subject_id_idx").on(table.subjectId),
+  index("questions_topic_id_idx").on(table.topicId),
+]);
 
 export const questionOptionsTable = pgTable("question_options", {
   id: serial("id").primaryKey(),
@@ -56,7 +60,9 @@ export const questionOptionsTable = pgTable("question_options", {
   text: text("text").notNull(),
   isCorrect: boolean("is_correct").notNull().default(false),
   order: integer("order").default(1),
-});
+}, (table) => [
+  index("question_options_question_id_idx").on(table.questionId),
+]);
 
 export const insertQuestionSchema = createInsertSchema(questionsTable).omit({
   id: true,

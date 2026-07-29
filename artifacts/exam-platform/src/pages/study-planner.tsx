@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarDays, Plus, CheckCircle2, Circle, Trash2, Target, Clock, BookOpen, Trophy } from 'lucide-react';
+import { getCookie, setCookie } from '@/lib/utils';
 
 type Priority = 'high' | 'medium' | 'low';
 type Category = 'Quantitative' | 'Reasoning' | 'English' | 'General Awareness' | 'Computer' | 'Custom';
@@ -29,7 +30,7 @@ const STORAGE_KEY = 'ssc-study-planner-tasks';
 
 function loadTasks(): StudyTask[] {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = getCookie(STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];
   } catch {
     return [];
@@ -37,7 +38,7 @@ function loadTasks(): StudyTask[] {
 }
 
 function saveTasks(tasks: StudyTask[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  setCookie(STORAGE_KEY, JSON.stringify(tasks));
 }
 
 const PRIORITY_COLORS: Record<Priority, string> = {

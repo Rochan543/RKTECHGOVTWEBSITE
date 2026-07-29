@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { db, usersTable, resultsTable, examsTable, questionsTable, testSessionsTable, notesTable } from "@workspace/db";
-import { eq, count } from "drizzle-orm";
+import { db, usersTable, resultsTable, examsTable, questionsTable, testSessionsTable, notesTable, violationsTable, sessionAnswersTable } from "@workspace/db";
+import { eq, count, desc, inArray, and, sql } from "drizzle-orm";
+import { logger } from "../../lib/logger";
 import { requireAdmin, requireAuth, type AuthRequest } from "../../middlewares/auth";
 import { ListUsersQueryParams, GetUserParams, UpdateUserParams, UpdateUserBody } from "@workspace/api-zod";
 
@@ -13,14 +14,45 @@ router.get("/v1/users", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
   const { page = 1, limit = 20, search, status, role } = params.data;
+  const offset = (page - 1) * limit;
 
-  let users = await db.select().from(usersTable);
-  if (search) users = users.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase()));
-  if (status) users = users.filter(u => u.status === status);
-  if (role) users = users.filter(u => u.role === role);
+  const conditions = [];
+  if (status) {
+    conditions.push(eq(usersTable.status, status));
+  }
+  if (role) {
+    conditions.push(eq(usersTable.role, role));
+  }
+  if (search) {
+    const searchLower = `%${search.toLowerCase()}%`;
+    conditions.push(
+      sql`lower(${usersTable.name}) like ${searchLower} or lower(${usersTable.email}) like ${searchLower}`
+    );
+  }
 
-  const total = users.length;
-  const paged = users.slice((page - 1) * limit, page * limit);
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const paged = await db.select({
+    id: usersTable.id,
+    name: usersTable.name,
+    email: usersTable.email,
+    role: usersTable.role,
+    status: usersTable.status,
+    phone: usersTable.phone,
+    avatarUrl: usersTable.avatarUrl,
+    rank: usersTable.rank,
+    totalScore: usersTable.totalScore,
+    createdAt: usersTable.createdAt,
+  })
+    .from(usersTable)
+    .where(whereClause)
+    .orderBy(desc(usersTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const [{ count: total }] = await db.select({ count: count() })
+    .from(usersTable)
+    .where(whereClause);
 
   const data = paged.map(u => ({
     id: u.id,
@@ -78,7 +110,7 @@ router.get("/v1/users/:id", requireAdmin, async (req, res): Promise<void> => {
   });
 });
 
-router.patch("/v1/users/:id", requireAdmin, async (req, res): Promise<void> => {
+router.patch("/v1/users/:id", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const params = UpdateUserParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -89,13 +121,35 @@ router.patch("/v1/users/:id", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const updateData: Record<string, unknown> = {};
-  if (parsed.data.status != null) updateData.status = parsed.data.status;
-  if (parsed.data.role != null) updateData.role = parsed.data.role;
-  if (parsed.data.name != null) updateData.name = parsed.data.name;
-  if (parsed.data.phone != null) updateData.phone = parsed.data.phone;
 
-  const [user] = await db.update(usersTable).set(updateData).where(eq(usersTable.id, params.data.id)).returning();
+  const targetId = Number(params.data.id);
+  const currentUserId = Number(req.userId);
+  const isAdmin = req.userRole === "admin" || req.userRole === "super_admin";
+  
+  logger.info({ currentUserId, targetId, userRole: req.userRole, isAdmin }, "PATCH /v1/users/:id profile update request");
+
+  if (!isAdmin && currentUserId !== targetId) {
+    res.status(403).json({ error: "Forbidden: You cannot modify other users' profiles." });
+    return;
+  }
+
+  // Only admins can change status or role
+  if (!isAdmin && (parsed.data.role !== undefined || parsed.data.status !== undefined)) {
+    res.status(403).json({ error: "Forbidden: Only admins can change user status or role." });
+    return;
+  }
+
+  const updateData: Record<string, unknown> = {};
+  if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
+  if (parsed.data.phone !== undefined) updateData.phone = parsed.data.phone;
+  if (parsed.data.avatarUrl !== undefined) updateData.avatarUrl = parsed.data.avatarUrl;
+
+  if (isAdmin) {
+    if (parsed.data.status !== undefined) updateData.status = parsed.data.status;
+    if (parsed.data.role !== undefined) updateData.role = parsed.data.role;
+  }
+
+  const [user] = await db.update(usersTable).set(updateData).where(eq(usersTable.id, targetId)).returning();
   if (!user) {
     res.status(404).json({ error: "User not found" });
     return;
@@ -115,12 +169,21 @@ router.patch("/v1/users/:id", requireAdmin, async (req, res): Promise<void> => {
 });
 
 router.get("/v1/admin/stats", requireAdmin, async (_req, res): Promise<void> => {
-  const [totalUsers] = await db.select({ count: count() }).from(usersTable);
-  const [activeUsers] = await db.select({ count: count() }).from(usersTable).where(eq(usersTable.status, "active"));
-  const [totalExams] = await db.select({ count: count() }).from(examsTable);
-  const [publishedExams] = await db.select({ count: count() }).from(examsTable).where(eq(examsTable.status, "published"));
-  const [totalQuestions] = await db.select({ count: count() }).from(questionsTable);
-  const [totalSessions] = await db.select({ count: count() }).from(testSessionsTable);
+  const [
+    [totalUsers],
+    [activeUsers],
+    [totalExams],
+    [publishedExams],
+    [totalQuestions],
+    [totalSessions]
+  ] = await Promise.all([
+    db.select({ count: count() }).from(usersTable),
+    db.select({ count: count() }).from(usersTable).where(eq(usersTable.status, "active")),
+    db.select({ count: count() }).from(examsTable),
+    db.select({ count: count() }).from(examsTable).where(eq(examsTable.status, "published")),
+    db.select({ count: count() }).from(questionsTable),
+    db.select({ count: count() }).from(testSessionsTable),
+  ]);
 
   res.json({
     totalUsers: totalUsers?.count ?? 0,
@@ -132,6 +195,104 @@ router.get("/v1/admin/stats", requireAdmin, async (_req, res): Promise<void> => 
     revenueThisMonth: 0,
     newUsersThisWeek: 0,
   });
+});
+
+router.get("/v1/users/:id/sessions", requireAdmin, async (req, res): Promise<void> => {
+  const params = GetUserParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const userId = params.data.id;
+
+  const answersSubquery = db
+    .select({
+      sessionId: sessionAnswersTable.sessionId,
+      total: count().as("total"),
+      answered: sql<number>`count(case when ${sessionAnswersTable.status} in ('answered', 'marked_answered') then 1 end)::int`.as("answered"),
+    })
+    .from(sessionAnswersTable)
+    .groupBy(sessionAnswersTable.sessionId)
+    .as("answers_sub");
+
+  const sessions = await db
+    .select({
+      id: testSessionsTable.id,
+      status: testSessionsTable.status,
+      startedAt: testSessionsTable.startedAt,
+      submittedAt: testSessionsTable.submittedAt,
+      examId: testSessionsTable.examId,
+      examTitle: examsTable.title,
+      userName: usersTable.name,
+      score: resultsTable.score,
+      totalMarks: resultsTable.totalMarks,
+      accuracy: resultsTable.accuracy,
+      correctCount: resultsTable.correct,
+      incorrectCount: resultsTable.incorrect,
+      skippedCount: resultsTable.skipped,
+      timeTakenSeconds: resultsTable.timeTakenSeconds,
+      answersTotal: sql<number>`COALESCE(${answersSubquery.total}, 0)::int`,
+      answersAnswered: sql<number>`COALESCE(${answersSubquery.answered}, 0)::int`,
+    })
+    .from(testSessionsTable)
+    .leftJoin(examsTable, eq(testSessionsTable.examId, examsTable.id))
+    .leftJoin(usersTable, eq(testSessionsTable.userId, usersTable.id))
+    .leftJoin(resultsTable, eq(testSessionsTable.id, resultsTable.sessionId))
+    .leftJoin(answersSubquery, eq(testSessionsTable.id, answersSubquery.sessionId))
+    .where(eq(testSessionsTable.userId, userId))
+    .orderBy(desc(testSessionsTable.startedAt));
+
+  res.json(sessions);
+});
+
+router.get("/v1/users/:id/violations", requireAdmin, async (req, res): Promise<void> => {
+  const params = GetUserParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const userId = params.data.id;
+  
+  const rawViolations = await db
+    .select({
+      id: violationsTable.id,
+      sessionId: violationsTable.sessionId,
+      type: violationsTable.type,
+      createdAt: violationsTable.createdAt,
+      examTitle: examsTable.title,
+      userName: usersTable.name,
+      count: sql<number>`count(*) over (partition by ${violationsTable.sessionId})::int`,
+    })
+    .from(violationsTable)
+    .innerJoin(testSessionsTable, eq(violationsTable.sessionId, testSessionsTable.id))
+    .leftJoin(examsTable, eq(testSessionsTable.examId, examsTable.id))
+    .leftJoin(usersTable, eq(testSessionsTable.userId, usersTable.id))
+    .where(eq(testSessionsTable.userId, userId))
+    .orderBy(desc(violationsTable.createdAt));
+
+  const severityMap: Record<string, string> = {
+    tab_switch: "medium",
+    window_blur: "low",
+    fullscreen_exit: "high",
+    context_menu: "low",
+    copy_attempt: "high",
+  };
+
+  const descriptionMap: Record<string, string> = {
+    tab_switch: "Switched tab or minimized browser window",
+    window_blur: "Lost focus on exam window",
+    fullscreen_exit: "Exited fullscreen mode",
+    context_menu: "Right-clicked or opened context menu",
+    copy_attempt: "Attempted to copy content",
+  };
+
+  const data = rawViolations.map(v => ({
+    ...v,
+    severity: severityMap[v.type] || "low",
+    description: descriptionMap[v.type] || "Security violation detected",
+  }));
+
+  res.json(data);
 });
 
 export default router;

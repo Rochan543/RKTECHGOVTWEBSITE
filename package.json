@@ -9,16 +9,18 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "dependencies": {
-    "@replit/connectors-sdk": "^0.4.1",
-    "dotenv": "^17.4.2"
+    "@replit/connectors-sdk": "^0.4.1"
   },
   "devDependencies": {
     "@parcel/watcher": "^2.6.0",
     "@rollup/rollup-win32-x64-msvc": "^4.62.3",
+    "cloudinary": "^2.10.0",
     "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
     "lightningcss": "^1.33.0",
     "lightningcss-win32-x64-msvc": "^1.33.0",
     "prettier": "^3.9.6",
+    "tsx": "catalog:",
     "typescript": "~5.9.3"
   }
 }

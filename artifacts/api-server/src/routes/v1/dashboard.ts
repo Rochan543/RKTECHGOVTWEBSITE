@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, resultsTable, testSessionsTable, examsTable, questionsTable, usersTable, sessionAnswersTable, examQuestionsTable, subjectsTable } from "@workspace/db";
-import { eq, desc, count, avg, sql, and } from "drizzle-orm";
+import { db, resultsTable, testSessionsTable, examsTable, questionsTable, usersTable, sessionAnswersTable, examQuestionsTable, subjectsTable, questionOptionsTable } from "@workspace/db";
+import { eq, desc, count, and, inArray, sql } from "drizzle-orm";
 import { requireAuth, type AuthRequest } from "../../middlewares/auth";
 
 const router: IRouter = Router();
@@ -8,9 +8,16 @@ const router: IRouter = Router();
 router.get("/v1/dashboard/stats", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const userId = req.userId!;
 
-  const [results, sessions] = await Promise.all([
-    db.select().from(resultsTable).where(eq(resultsTable.userId, userId)),
-    db.select().from(testSessionsTable).where(eq(testSessionsTable.userId, userId)),
+  const [results, [{ totalSessions }]] = await Promise.all([
+    db.select({
+      score: resultsTable.score,
+      totalMarks: resultsTable.totalMarks,
+      accuracy: resultsTable.accuracy,
+      createdAt: resultsTable.createdAt,
+    }).from(resultsTable).where(eq(resultsTable.userId, userId)),
+    db.select({ totalSessions: count() })
+      .from(testSessionsTable)
+      .where(eq(testSessionsTable.userId, userId)),
   ]);
 
   const totalTestsTaken = results.length;
@@ -31,7 +38,7 @@ router.get("/v1/dashboard/stats", requireAuth, async (req: AuthRequest, res): Pr
     averageScore: Math.round(averageScore * 10) / 10,
     overallAccuracy: Math.round(overallAccuracy * 10) / 10,
     currentRank: user?.rank ?? null,
-    totalStudyTime: sessions.reduce((s, _) => s + 60, 0), // approx 60min per session
+    totalStudyTime: totalSessions * 60,
     testsThisWeek,
     weakSubjectsCount: 2,
     strongSubjectsCount: 1,
@@ -50,19 +57,26 @@ router.get("/v1/dashboard/upcoming-tests", requireAuth, async (_req: AuthRequest
     .orderBy(desc(examsTable.createdAt))
     .limit(5);
 
-  // Count questions per exam
-  const result = await Promise.all(exams.map(async (exam) => {
-    const [qCount] = await db.select({ count: count() }).from(examQuestionsTable).where(eq(examQuestionsTable.examId, exam.id));
+  const examIds = exams.map(e => e.id);
+  const qCounts = examIds.length > 0
+    ? await db.select({ examId: examQuestionsTable.examId, count: count() })
+        .from(examQuestionsTable)
+        .where(inArray(examQuestionsTable.examId, examIds))
+        .groupBy(examQuestionsTable.examId)
+    : [];
+  const qCountMap = new Map(qCounts.map(q => [q.examId, q.count]));
+
+  const result = exams.map((exam) => {
     return {
       id: exam.id,
       title: exam.title,
       type: exam.type,
       scheduledAt: null,
       durationMinutes: exam.durationMinutes,
-      questionCount: qCount?.count ?? 0,
+      questionCount: qCountMap.get(exam.id) ?? 0,
       categoryName: null,
     };
-  }));
+  });
 
   res.json(result);
 });
@@ -77,24 +91,25 @@ router.get("/v1/dashboard/recent-activity", requireAuth, async (req: AuthRequest
     rank: resultsTable.rank,
     createdAt: resultsTable.createdAt,
     examId: resultsTable.examId,
+    examTitle: examsTable.title,
   })
     .from(resultsTable)
+    .leftJoin(examsTable, eq(resultsTable.examId, examsTable.id))
     .where(eq(resultsTable.userId, userId))
     .orderBy(desc(resultsTable.createdAt))
     .limit(10);
 
-  const activity = await Promise.all(results.map(async (r) => {
-    const [exam] = await db.select({ title: examsTable.title }).from(examsTable).where(eq(examsTable.id, r.examId));
+  const activity = results.map((r) => {
     return {
       id: r.id,
-      examTitle: exam?.title ?? "Unknown Exam",
+      examTitle: r.examTitle ?? "Unknown Exam",
       score: r.score,
       totalMarks: r.totalMarks,
       accuracy: r.accuracy,
       rank: r.rank ?? null,
       attemptedAt: r.createdAt,
     };
-  }));
+  });
 
   res.json(activity);
 });
@@ -102,10 +117,14 @@ router.get("/v1/dashboard/recent-activity", requireAuth, async (req: AuthRequest
 router.get("/v1/dashboard/subject-performance", requireAuth, async (req: AuthRequest, res): Promise<void> => {
   const userId = req.userId!;
 
-  const subjects = await db.select().from(subjectsTable);
-  const results = await db.select().from(resultsTable).where(eq(resultsTable.userId, userId));
+  const [hasResult] = await db.select({ id: resultsTable.id })
+    .from(resultsTable)
+    .where(eq(resultsTable.userId, userId))
+    .limit(1);
 
-  if (results.length === 0) {
+  const subjects = await db.select({ id: subjectsTable.id, name: subjectsTable.name }).from(subjectsTable);
+
+  if (!hasResult) {
     const mock = subjects.slice(0, 5).map((s) => ({
       subjectId: s.id,
       subjectName: s.name,
@@ -119,22 +138,70 @@ router.get("/v1/dashboard/subject-performance", requireAuth, async (req: AuthReq
     return;
   }
 
-  // Aggregate subject performance from session answers
-  const allSessionIds = await db.select({ id: testSessionsTable.id })
-    .from(testSessionsTable)
-    .where(eq(testSessionsTable.userId, userId));
+  // Fetch stats per subject aggregated directly in database!
+  const answersList = await db.select({
+    subjectId: questionsTable.subjectId,
+    subjectName: subjectsTable.name,
+    correct: sql<number>`count(case when ${sessionAnswersTable.selectedOptionId} = ${questionOptionsTable.id} then 1 end)::int`,
+    incorrect: sql<number>`count(case when ${sessionAnswersTable.selectedOptionId} is not null and ${sessionAnswersTable.selectedOptionId} != ${questionOptionsTable.id} then 1 end)::int`,
+    skipped: sql<number>`count(case when ${sessionAnswersTable.selectedOptionId} is null or ${sessionAnswersTable.status} in ('not_visited', 'visited') then 1 end)::int`,
+  })
+    .from(sessionAnswersTable)
+    .innerJoin(questionsTable, eq(sessionAnswersTable.questionId, questionsTable.id))
+    .innerJoin(subjectsTable, eq(questionsTable.subjectId, subjectsTable.id))
+    .innerJoin(testSessionsTable, eq(sessionAnswersTable.sessionId, testSessionsTable.id))
+    .leftJoin(questionOptionsTable, and(
+      eq(questionOptionsTable.questionId, questionsTable.id),
+      eq(questionOptionsTable.isCorrect, true)
+    ))
+    .where(eq(testSessionsTable.userId, userId))
+    .groupBy(questionsTable.subjectId, subjectsTable.name);
 
-  const performance = subjects.slice(0, 6).map((s) => ({
-    subjectId: s.id,
-    subjectName: s.name,
-    accuracy: Math.round(Math.random() * 40 + 50),
-    totalAttempted: Math.floor(Math.random() * 50 + 20),
-    correct: Math.floor(Math.random() * 30 + 10),
-    incorrect: Math.floor(Math.random() * 15 + 5),
-    skipped: Math.floor(Math.random() * 5),
-  }));
+  // Now aggregate!
+  const subjectStatsMap = new Map<number, {
+    subjectId: number;
+    subjectName: string;
+    correct: number;
+    incorrect: number;
+    skipped: number;
+  }>();
 
-  res.json(performance);
+  // Initialize with all subjects
+  for (const s of subjects) {
+    subjectStatsMap.set(s.id, {
+      subjectId: s.id,
+      subjectName: s.name,
+      correct: 0,
+      incorrect: 0,
+      skipped: 0,
+    });
+  }
+
+  for (const row of answersList) {
+    const sId = row.subjectId;
+    if (subjectStatsMap.has(sId)) {
+      const stat = subjectStatsMap.get(sId)!;
+      stat.correct = row.correct;
+      stat.incorrect = row.incorrect;
+      stat.skipped = row.skipped;
+    }
+  }
+
+  const performance = Array.from(subjectStatsMap.values()).map(stat => {
+    const totalAttempted = stat.correct + stat.incorrect;
+    const accuracy = totalAttempted > 0 ? (stat.correct / totalAttempted) * 100 : 0;
+    return {
+      subjectId: stat.subjectId,
+      subjectName: stat.subjectName,
+      accuracy: Math.round(accuracy * 10) / 10,
+      totalAttempted,
+      correct: stat.correct,
+      incorrect: stat.incorrect,
+      skipped: stat.skipped,
+    };
+  });
+
+  res.json(performance.slice(0, 6));
 });
 
 export default router;

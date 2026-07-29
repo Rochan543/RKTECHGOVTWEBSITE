@@ -7,11 +7,14 @@ import {
   examQuestionsTable,
   testSessionsTable,
   resultsTable,
+  notificationsTable,
 } from "@workspace/db";
-import { eq, count, desc } from "drizzle-orm";
+import { eq, count, desc, and, inArray, sql } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../../middlewares/auth";
 import { verifyToken } from "../../middlewares/auth";
 import { usersTable } from "@workspace/db";
+import { createNotificationForStudents, createNotificationForAdmins } from "../../lib/notifications";
+import { logger } from "../../lib/logger";
 import {
   ListExamsQueryParams,
   CreateExamBody,
@@ -58,48 +61,80 @@ router.get("/v1/exams", optionalAuth, async (req: AuthRequest, res): Promise<voi
 
   const isAdmin = req.userRole === "admin" || req.userRole === "super_admin";
 
-  const allExams = await db.select().from(examsTable).orderBy(desc(examsTable.createdAt));
-  let filtered = allExams;
-
-  // Admins see all exams unless they explicitly filter by status
+  const conditions = [];
   if (status) {
-    filtered = filtered.filter(e => e.status === status);
+    conditions.push(eq(examsTable.status, status));
   } else if (!isAdmin) {
-    // Students and unauthenticated users only see published exams
-    filtered = filtered.filter(e => e.status === "published");
+    conditions.push(eq(examsTable.status, "published"));
   }
+  if (categoryId) {
+    conditions.push(eq(examsTable.categoryId, categoryId));
+  }
+  if (type) {
+    conditions.push(eq(examsTable.type, type));
+  }
+  
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  if (categoryId) filtered = filtered.filter(e => e.categoryId === categoryId);
-  if (type) filtered = filtered.filter(e => e.type === type);
+  const paged = await db.select({
+    id: examsTable.id,
+    title: examsTable.title,
+    description: examsTable.description,
+    type: examsTable.type,
+    status: examsTable.status,
+    durationMinutes: examsTable.durationMinutes,
+    totalMarks: examsTable.totalMarks,
+    positiveMarks: examsTable.positiveMarks,
+    negativeMarks: examsTable.negativeMarks,
+    categoryId: examsTable.categoryId,
+    categoryName: examCategoriesTable.name,
+    createdAt: examsTable.createdAt,
+  })
+    .from(examsTable)
+    .leftJoin(examCategoriesTable, eq(examsTable.categoryId, examCategoriesTable.id))
+    .where(whereClause)
+    .orderBy(desc(examsTable.createdAt))
+    .limit(limit)
+    .offset(offset);
 
-  const total = filtered.length;
-  const paged = filtered.slice(offset, offset + limit);
+  const [{ count: total }] = await db.select({ count: count() })
+    .from(examsTable)
+    .where(whereClause);
 
-  const data = await Promise.all(paged.map(async (exam) => {
-    const [qCount] = await db.select({ count: count() }).from(examQuestionsTable).where(eq(examQuestionsTable.examId, exam.id));
-    const [aCount] = await db.select({ count: count() }).from(testSessionsTable).where(eq(testSessionsTable.examId, exam.id));
-    let categoryName: string | null = null;
-    if (exam.categoryId) {
-      const [cat] = await db.select({ name: examCategoriesTable.name }).from(examCategoriesTable).where(eq(examCategoriesTable.id, exam.categoryId));
-      categoryName = cat?.name ?? null;
-    }
-    return {
-      id: exam.id,
-      title: exam.title,
-      description: exam.description ?? null,
-      type: exam.type,
-      status: exam.status,
-      durationMinutes: exam.durationMinutes,
-      totalMarks: exam.totalMarks,
-      totalQuestions: qCount?.count ?? 0,
-      positiveMarks: exam.positiveMarks,
-      negativeMarks: exam.negativeMarks,
-      categoryId: exam.categoryId ?? null,
-      categoryName,
-      attemptCount: aCount?.count ?? 0,
-      averageScore: null,
-      createdAt: exam.createdAt,
-    };
+  const examIds = paged.map(e => e.id);
+
+  const qCounts = examIds.length > 0
+    ? await db.select({ examId: examQuestionsTable.examId, count: count() })
+        .from(examQuestionsTable)
+        .where(inArray(examQuestionsTable.examId, examIds))
+        .groupBy(examQuestionsTable.examId)
+    : [];
+  const qCountMap = new Map(qCounts.map(q => [q.examId, q.count]));
+
+  const aCounts = examIds.length > 0
+    ? await db.select({ examId: testSessionsTable.examId, count: count() })
+        .from(testSessionsTable)
+        .where(inArray(testSessionsTable.examId, examIds))
+        .groupBy(testSessionsTable.examId)
+    : [];
+  const aCountMap = new Map(aCounts.map(a => [a.examId, a.count]));
+
+  const data = paged.map((exam) => ({
+    id: exam.id,
+    title: exam.title,
+    description: exam.description ?? null,
+    type: exam.type,
+    status: exam.status,
+    durationMinutes: exam.durationMinutes,
+    totalMarks: exam.totalMarks,
+    totalQuestions: qCountMap.get(exam.id) ?? 0,
+    positiveMarks: exam.positiveMarks,
+    negativeMarks: exam.negativeMarks,
+    categoryId: exam.categoryId ?? null,
+    categoryName: exam.categoryName ?? null,
+    attemptCount: aCountMap.get(exam.id) ?? 0,
+    averageScore: null,
+    createdAt: exam.createdAt,
   }));
 
   res.json({ data, total, page, limit });
@@ -147,6 +182,12 @@ router.post("/v1/exams", requireAdmin, async (req, res): Promise<void> => {
     }
   }
 
+  // Trigger Notifications
+  await createNotificationForAdmins("New Exam Created", `Exam '${exam.title}' has been created successfully.`, "system");
+  if (exam.status === "published") {
+    await createNotificationForStudents("New Exam Available", `A new exam '${exam.title}' is now published and available for attempt! Go to Test Series to start.`, "new_exam", `/exams/${exam.id}`);
+  }
+
   res.status(201).json({ ...exam, totalQuestions: 0, attemptCount: 0, averageScore: null, categoryName: null });
 });
 
@@ -165,12 +206,20 @@ router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise
   const [qCount] = await db.select({ count: count() }).from(examQuestionsTable).where(eq(examQuestionsTable.examId, exam.id));
   const [aCount] = await db.select({ count: count() }).from(testSessionsTable).where(eq(testSessionsTable.examId, exam.id));
 
-  const sectionsWithCount = await Promise.all(sections.map(async (sec) => {
-    const [sq] = await db.select({ count: count() }).from(examQuestionsTable).where(eq(examQuestionsTable.sectionId, sec.id));
+  const sectionIds = sections.map(s => s.id);
+  const sqCounts = sectionIds.length > 0
+    ? await db.select({ sectionId: examQuestionsTable.sectionId, count: count() })
+        .from(examQuestionsTable)
+        .where(inArray(examQuestionsTable.sectionId, sectionIds))
+        .groupBy(examQuestionsTable.sectionId)
+    : [];
+  const sqCountMap = new Map(sqCounts.map(s => [s.sectionId, s.count]));
+
+  const sectionsWithCount = sections.map((sec) => {
     return {
       id: sec.id,
       name: sec.name,
-      questionCount: sq?.count ?? 0,
+      questionCount: sqCountMap.get(sec.id) ?? 0,
       durationMinutes: sec.durationMinutes ?? null,
       order: sec.order,
       subjectId: sec.subjectId ?? null,
@@ -180,7 +229,7 @@ router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise
       navigationRule: sec.navigationRule,
       autoMove: sec.autoMove,
     };
-  }));
+  });
 
   res.json({
     id: exam.id,
@@ -211,6 +260,7 @@ router.put("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const [oldExam] = await db.select().from(examsTable).where(eq(examsTable.id, params.data.id));
   const { sections, questionTimerSeconds, autoSubmit, autoSave, ...bodyRest } = req.body;
   const parsed = UpdateExamBody.safeParse(bodyRest);
   if (!parsed.success) {
@@ -242,7 +292,7 @@ router.put("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
 
   if (Array.isArray(sections)) {
     const existingSections = await db.select().from(examSectionsTable).where(eq(examSectionsTable.examId, exam.id));
-    const sectionIdsInPayload = sections.map(s => s.id).filter(Boolean);
+    const sectionIdsInPayload = sections.map(s => s.id ? Number(s.id) : null).filter(Boolean) as number[];
     
     // 1. Delete sections that are not in the payload
     for (const existing of existingSections) {
@@ -267,15 +317,26 @@ router.put("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
         autoMove: sec.autoMove !== false,
       };
       
-      if (sec.id) {
-        await db.update(examSectionsTable).set(secData).where(eq(examSectionsTable.id, sec.id));
+      const secId = sec.id ? Number(sec.id) : null;
+      if (secId) {
+        await db.update(examSectionsTable).set(secData).where(eq(examSectionsTable.id, secId));
       } else {
         await db.insert(examSectionsTable).values(secData);
       }
     }
   }
 
-  res.json({ ...exam, totalQuestions: 0, attemptCount: 0, averageScore: null, categoryName: null });
+  // Trigger Notifications
+  await createNotificationForAdmins("Exam Updated", `Exam '${exam.title}' has been updated.`, "system");
+  const isNowPublished = exam.status === "published" && (!oldExam || oldExam.status !== "published");
+  if (isNowPublished) {
+    await createNotificationForStudents("New Exam Published", `A new exam '${exam.title}' is now published and available for attempt! Go to Test Series to start.`, "new_exam", `/exams/${exam.id}`);
+  } else if (exam.status === "published") {
+    await createNotificationForStudents("Exam Updated", `The exam '${exam.title}' has been updated.`, "system", `/exams/${exam.id}`);
+  }
+
+  const [qCount] = await db.select({ count: count() }).from(examQuestionsTable).where(eq(examQuestionsTable.examId, exam.id));
+  res.json({ ...exam, totalQuestions: qCount?.count ?? 0, attemptCount: 0, averageScore: null, categoryName: null });
 });
 
 router.delete("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
@@ -284,8 +345,45 @@ router.delete("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => 
     res.status(400).json({ error: params.error.message });
     return;
   }
-  await db.delete(examsTable).where(eq(examsTable.id, params.data.id));
-  res.json({ message: "Exam deleted" });
+  const examId = params.data.id;
+
+  try {
+    const [oldExam] = await db.select().from(examsTable).where(eq(examsTable.id, examId));
+    if (!oldExam) {
+      res.status(404).json({ error: "Exam not found" });
+      return;
+    }
+
+    await db.transaction(async (tx) => {
+      // Find results related to this exam
+      const results = await tx.select({ id: resultsTable.id }).from(resultsTable).where(eq(resultsTable.examId, examId));
+      const resultIds = results.map(r => r.id);
+
+      // 1. Delete notifications related to the exam or results
+      await tx.delete(notificationsTable).where(sql`${notificationsTable.link} = ${`/exams/${examId}`} OR ${notificationsTable.link} LIKE ${`/exams/${examId}/%`}`);
+      if (resultIds.length > 0) {
+        await tx.delete(notificationsTable).where(
+          inArray(notificationsTable.link, resultIds.map(id => `/results/${id}`))
+        );
+      }
+
+      // 2. Delete from resultsTable first (breaks FK constraints from resultsTable.sessionId -> testSessionsTable.id)
+      await tx.delete(resultsTable).where(eq(resultsTable.examId, examId));
+
+      // 3. Delete from testSessionsTable (cascades to violationsTable and sessionAnswersTable)
+      await tx.delete(testSessionsTable).where(eq(testSessionsTable.examId, examId));
+
+      // 4. Delete from examsTable (cascades to examSectionsTable and examQuestionsTable)
+      await tx.delete(examsTable).where(eq(examsTable.id, examId));
+    });
+
+    await createNotificationForAdmins("Exam Deleted", `Exam '${oldExam.title}' has been deleted.`, "system");
+
+    res.json({ message: "Exam deleted" });
+  } catch (error) {
+    logger.error(error, "Error deleting exam");
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 });
 
 router.get("/v1/exams/:id/stats", async (req, res): Promise<void> => {
@@ -308,6 +406,49 @@ router.get("/v1/exams/:id/stats", async (req, res): Promise<void> => {
     averageAccuracy: Math.round(avgAcc * 10) / 10,
     passRate: 70,
   });
+});
+
+router.get("/v1/exams/:id/questions", requireAdmin, async (req, res): Promise<void> => {
+  const examId = parseInt(req.params.id as string, 10);
+  if (isNaN(examId)) {
+    res.status(400).json({ error: "Invalid exam ID" });
+    return;
+  }
+  const mappings = await db
+    .select()
+    .from(examQuestionsTable)
+    .where(eq(examQuestionsTable.examId, examId))
+    .orderBy(examQuestionsTable.order);
+  res.json(mappings);
+});
+
+router.post("/v1/exams/:id/questions", requireAdmin, async (req, res): Promise<void> => {
+  const examId = parseInt(req.params.id as string, 10);
+  if (isNaN(examId)) {
+    res.status(400).json({ error: "Invalid exam ID" });
+    return;
+  }
+  const { questions } = req.body;
+  if (!Array.isArray(questions)) {
+    res.status(400).json({ error: "Questions payload must be an array" });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.examId, examId));
+    if (questions.length > 0) {
+      await tx.insert(examQuestionsTable).values(
+        questions.map((q: any, idx: number) => ({
+          examId,
+          sectionId: q.sectionId ? parseInt(q.sectionId, 10) : null,
+          questionId: parseInt(q.questionId, 10),
+          order: q.order || (idx + 1),
+        }))
+      );
+    }
+  });
+
+  res.json({ success: true, count: questions.length });
 });
 
 export default router;

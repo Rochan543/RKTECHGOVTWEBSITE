@@ -6,6 +6,7 @@ import {
   boolean,
   integer,
   unique,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -30,7 +31,10 @@ export const notesTable = pgTable("notes", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("notes_subject_id_idx").on(table.subjectId),
+  index("notes_category_id_idx").on(table.categoryId),
+]);
 
 export const notificationsTable = pgTable("notifications", {
   id: serial("id").primaryKey(),
@@ -49,7 +53,10 @@ export const notificationsTable = pgTable("notifications", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("notifications_user_id_idx").on(table.userId),
+  index("notifications_is_read_idx").on(table.isRead),
+]);
 
 export const bookmarksTable = pgTable(
   "bookmarks",

@@ -3,6 +3,7 @@ import { db, fileUploadsTable } from "@workspace/db";
 import { requireAuth, requireAdmin, type AuthRequest } from "../../middlewares/auth";
 import { getStorageProvider } from "../../lib/storage";
 import { z } from "zod";
+import { logger } from "../../lib/logger";
 
 const router: IRouter = Router();
 
@@ -74,11 +75,14 @@ router.post("/v1/upload", requireAuth, async (req: AuthRequest, res): Promise<vo
 
     res.status(201).json(fileRecord);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal upload error";
-    if (msg.includes("Storage provider is not configured")) {
+    logger.error({ err }, "Generic upload failed");
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes("not configured")) {
       res.status(503).json({ error: "Storage provider is not configured." });
+    } else if (msg.toLowerCase().includes("limit") || msg.toLowerCase().includes("large") || msg.toLowerCase().includes("too large") || msg.toLowerCase().includes("size")) {
+      res.status(400).json({ error: "This file exceeds the upload limit. Maximum supported size is 50 MB." });
     } else {
-      res.status(500).json({ error: msg });
+      res.status(500).json({ error: "Upload failed. Please try again." });
     }
   }
 });
@@ -126,8 +130,15 @@ router.post("/v1/upload/notes-file", requireAdmin, async (req: AuthRequest, res)
       fileSize: result.fileSize,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Upload error";
-    res.status(msg.includes("not configured") ? 503 : 500).json({ error: msg });
+    logger.error({ err }, "Notes file upload failed");
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes("not configured")) {
+      res.status(503).json({ error: "Storage provider is not configured." });
+    } else if (msg.toLowerCase().includes("limit") || msg.toLowerCase().includes("large") || msg.toLowerCase().includes("too large") || msg.toLowerCase().includes("size")) {
+      res.status(400).json({ error: "This file exceeds the upload limit. Maximum supported size is 50 MB." });
+    } else {
+      res.status(500).json({ error: "Upload failed. Please try again." });
+    }
   }
 });
 
@@ -175,8 +186,15 @@ router.post("/v1/upload/current-affairs-image", requireAdmin, async (req: AuthRe
       publicId: result.publicId,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Upload error";
-    res.status(msg.includes("not configured") ? 503 : 500).json({ error: msg });
+    logger.error({ err }, "Current affairs image upload failed");
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.toLowerCase().includes("not configured")) {
+      res.status(503).json({ error: "Storage provider is not configured." });
+    } else if (msg.toLowerCase().includes("limit") || msg.toLowerCase().includes("large") || msg.toLowerCase().includes("too large") || msg.toLowerCase().includes("size")) {
+      res.status(400).json({ error: "This file exceeds the upload limit. Maximum supported size is 50 MB." });
+    } else {
+      res.status(500).json({ error: "Upload failed. Please try again." });
+    }
   }
 });
 

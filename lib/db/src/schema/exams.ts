@@ -6,6 +6,8 @@ import {
   real,
   integer,
   boolean,
+  unique,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -52,7 +54,11 @@ export const examsTable = pgTable("exams", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
-});
+}, (table) => [
+  index("exams_category_id_idx").on(table.categoryId),
+  index("exams_status_idx").on(table.status),
+  index("exams_created_at_idx").on(table.createdAt),
+]);
 
 export const examSectionsTable = pgTable("exam_sections", {
   id: serial("id").primaryKey(),
@@ -71,19 +77,25 @@ export const examSectionsTable = pgTable("exam_sections", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
-});
+}, (table) => [
+  index("exam_sections_exam_id_idx").on(table.examId),
+]);
 
 export const examQuestionsTable = pgTable("exam_questions", {
   id: serial("id").primaryKey(),
   examId: integer("exam_id")
     .notNull()
     .references(() => examsTable.id, { onDelete: "cascade" }),
-  sectionId: integer("section_id").references(() => examSectionsTable.id),
+  sectionId: integer("section_id").references(() => examSectionsTable.id, { onDelete: "cascade" }),
   questionId: integer("question_id")
     .notNull()
-    .references(() => questionsTable.id),
+    .references(() => questionsTable.id, { onDelete: "cascade" }),
   order: integer("order").notNull().default(1),
-});
+}, (t) => [
+  unique("exam_question_uniq").on(t.examId, t.questionId),
+  index("exam_questions_section_id_idx").on(t.sectionId),
+  index("exam_questions_question_id_idx").on(t.questionId),
+]);
 
 export const insertExamSchema = createInsertSchema(examsTable).omit({
   id: true,
