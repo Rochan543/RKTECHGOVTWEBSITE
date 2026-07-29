@@ -1,10 +1,16 @@
 import { Router, type IRouter } from "express";
 import { HealthCheckResponse } from "@workspace/api-zod";
+import { getCookieOptions } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
-router.get("/healthz", (_req, res) => {
-  const data = HealthCheckResponse.parse({ status: "ok" });
+router.get("/healthz", (req, res) => {
+  const data = {
+    status: "ok",
+    env: process.env.NODE_ENV,
+    headers: req.headers,
+    cookieOptions: getCookieOptions(req)
+  };
   res.json(data);
 });
 
