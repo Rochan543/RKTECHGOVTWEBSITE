@@ -1,0 +1,3 @@
+[build]
+command = "pnpm install && pnpm --filter @workspace/exam-platform run build"
+publish = "artifacts/exam-platform/dist"
