@@ -14,6 +14,7 @@ import {
   getListNotificationsQueryOptions,
   getListExamsQueryOptions
 } from '@workspace/api-client-react';
+import { API_BASE_URL } from '@workspace/api-client-react';
 import { prefetchRoute } from '@/App';
 import {
   LayoutDashboard, FileText, BarChart2, Trophy, BookOpen, User as UserIcon,
@@ -178,7 +179,7 @@ function StudentNav() {
     let reconnectTimeout: any = null;
 
     function connect() {
-      eventSource = new EventSource('/api/v1/notifications/stream');
+      eventSource = new EventSource(`${API_BASE_URL}/api/v1/notifications/stream`, { withCredentials: true });
 
       eventSource.onmessage = (event) => {
         try {

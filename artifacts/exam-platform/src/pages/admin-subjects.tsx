@@ -22,9 +22,7 @@ import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { Plus, BookOpen, Layers, Loader2, Hash, Pencil, Trash2 } from 'lucide-react';
 
 async function apiCall<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await customFetch(path, opts) as Response;
-  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
-  return res.json() as Promise<T>;
+  return customFetch<T>(path, opts as any);
 }
 
 export default function AdminSubjects() {

@@ -15,7 +15,21 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 // Module-level configuration
 // ---------------------------------------------------------------------------
 
-let _baseUrl: string | null = null;
+const getInitialBaseUrl = (): string => {
+  if (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) {
+    let url = (import.meta as any).env.VITE_API_URL;
+    url = url.replace(/\/+$/, "");
+    if (url.endsWith("/api")) {
+      url = url.substring(0, url.length - 4);
+    }
+    return url;
+  }
+  return "http://localhost:3000";
+};
+
+export const API_BASE_URL = getInitialBaseUrl();
+
+let _baseUrl: string | null = API_BASE_URL;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
 /**
@@ -360,7 +374,7 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { credentials: "same-origin", ...init, method, headers });
+  const response = await fetch(input, { credentials: "include", ...init, method, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

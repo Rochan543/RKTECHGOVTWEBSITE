@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useListNotes, useCreateNote, useDeleteNote, useListSubjects, customFetch } from '@workspace/api-client-react';
+import { useListNotes, useCreateNote, useDeleteNote, useListSubjects, customFetch, API_BASE_URL } from '@workspace/api-client-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,7 +67,7 @@ export default function AdminNotes() {
           const base64Content = raw.split(',')[1] || raw;
 
           const xhr = new XMLHttpRequest();
-          xhr.open('POST', '/api/v1/upload');
+          xhr.open('POST', `${API_BASE_URL}/api/v1/upload`);
           xhr.setRequestHeader('Content-Type', 'application/json');
           xhr.withCredentials = true;
 
