@@ -75,25 +75,6 @@ export const bookmarksTable = pgTable(
   (t) => [unique("unique_bookmark").on(t.userId, t.questionId)],
 );
 
-export const currentAffairsTable = pgTable("current_affairs", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  content: text("content").notNull(),
-  category: text("category", { enum: ["gk", "current_affairs", "gs_news"] })
-    .notNull()
-    .default("current_affairs"),
-  imageUrl: text("image_url"),
-  publishedDate: timestamp("published_date", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
 
 export const achievementsTable = pgTable(
   "achievements",
@@ -141,11 +122,7 @@ export type Notification = typeof notificationsTable.$inferSelect;
 
 export type Bookmark = typeof bookmarksTable.$inferSelect;
 
-export const insertCurrentAffairsSchema = createInsertSchema(currentAffairsTable).omit({
-  id: true, createdAt: true, updatedAt: true,
-});
-export type InsertCurrentAffairs = z.infer<typeof insertCurrentAffairsSchema>;
-export type CurrentAffairs = typeof currentAffairsTable.$inferSelect;
+
 
 export const insertAchievementSchema = createInsertSchema(achievementsTable).omit({
   id: true, unlockedAt: true,

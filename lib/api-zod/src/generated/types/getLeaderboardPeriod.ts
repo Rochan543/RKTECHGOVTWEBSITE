@@ -10,6 +10,7 @@ export type GetLeaderboardPeriod = typeof GetLeaderboardPeriod[keyof typeof GetL
 
 
 export const GetLeaderboardPeriod = {
+  daily: 'daily',
   weekly: 'weekly',
   monthly: 'monthly',
   overall: 'overall',

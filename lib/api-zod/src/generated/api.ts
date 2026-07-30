@@ -407,6 +407,99 @@ export const GetExamStatsResponse = zod.object({
 
 
 /**
+ * @summary Get collections linked to an exam
+ */
+export const GetExamCollectionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetExamCollectionsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})
+export const GetExamCollectionsResponse = zod.array(GetExamCollectionsResponseItem)
+
+
+/**
+ * @summary Link collections to an exam
+ */
+export const SaveExamCollectionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SaveExamCollectionsBody = zod.object({
+  "collectionIds": zod.array(zod.number())
+})
+
+export const SaveExamCollectionsResponse = zod.object({
+  "success": zod.boolean(),
+  "count": zod.number()
+})
+
+
+/**
+ * @summary Unlink a collection from an exam
+ */
+export const RemoveExamCollectionParams = zod.object({
+  "id": zod.coerce.number(),
+  "collectionId": zod.coerce.number()
+})
+
+export const RemoveExamCollectionResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Preview merged questions from multiple collections
+ */
+export const PreviewCollectionsBody = zod.object({
+  "collectionIds": zod.array(zod.number())
+})
+
+export const PreviewCollectionsResponse = zod.object({
+  "totalQuestions": zod.number(),
+  "totalMarks": zod.number(),
+  "duplicatesRemoved": zod.number(),
+  "difficultyDistribution": zod.object({
+  "easy": zod.number(),
+  "medium": zod.number(),
+  "hard": zod.number()
+}),
+  "collections": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string()
+})),
+  "questions": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "type": zod.enum(['single_choice', 'multiple_choice', 'true_false', 'integer', 'numerical']),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "explanation": zod.string().nullish(),
+  "hint": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "positiveMarks": zod.number(),
+  "negativeMarks": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number(),
+  "subjectName": zod.string().nullish(),
+  "topicName": zod.string().nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "isCorrect": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
  * @summary List all subjects
  */
 export const ListSubjectsResponseItem = zod.object({
@@ -469,6 +562,220 @@ export const CreateTopicResponse = zod.object({
   "subjectName": zod.string(),
   "questionCount": zod.number()
 })
+
+
+/**
+ * @summary List all question collections
+ */
+export const listCollectionsQueryPageDefault = 1;
+export const listCollectionsQueryLimitDefault = 20;
+
+export const ListCollectionsQueryParams = zod.object({
+  "page": zod.coerce.number().default(listCollectionsQueryPageDefault),
+  "limit": zod.coerce.number().default(listCollectionsQueryLimitDefault),
+  "search": zod.coerce.string().nullish(),
+  "isArchived": zod.coerce.boolean().nullish(),
+  "subjectId": zod.coerce.number().nullish(),
+  "topicId": zod.coerce.number().nullish(),
+  "difficulty": zod.coerce.string().nullish(),
+  "collectionType": zod.coerce.string().nullish(),
+  "status": zod.coerce.string().nullish(),
+  "sortBy": zod.coerce.string().nullish(),
+  "questionCountRange": zod.coerce.string().nullish()
+})
+
+export const ListCollectionsResponse = zod.object({
+  "data": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})),
+  "total": zod.number(),
+  "page": zod.number(),
+  "limit": zod.number()
+})
+
+
+/**
+ * @summary Create a new question collection
+ */
+export const CreateCollectionBody = zod.object({
+  "name": zod.string(),
+  "description": zod.string().nullish()
+})
+
+export const CreateCollectionResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})
+
+
+/**
+ * @summary Get details of a question collection including items
+ */
+export const GetCollectionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCollectionResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number(),
+  "questions": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "type": zod.enum(['single_choice', 'multiple_choice', 'true_false', 'integer', 'numerical']),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "explanation": zod.string().nullish(),
+  "hint": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "positiveMarks": zod.number(),
+  "negativeMarks": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number(),
+  "subjectName": zod.string().nullish(),
+  "topicName": zod.string().nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "isCorrect": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Update a question collection
+ */
+export const UpdateCollectionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateCollectionBody = zod.object({
+  "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean().optional()
+})
+
+export const UpdateCollectionResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})
+
+
+/**
+ * @summary Delete a question collection
+ */
+export const DeleteCollectionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteCollectionResponse = zod.object({
+  "message": zod.string().optional()
+})
+
+
+/**
+ * @summary Set/update the questions in a collection
+ */
+export const UpdateCollectionItemsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateCollectionItemsBody = zod.object({
+  "questionIds": zod.array(zod.number())
+})
+
+export const UpdateCollectionItemsResponse = zod.object({
+  "message": zod.string().optional(),
+  "count": zod.number().optional()
+})
+
+
+/**
+ * @summary Duplicate a collection and its items
+ */
+export const DuplicateCollectionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DuplicateCollectionResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})
+
+
+/**
+ * @summary Toggle archive status of a collection
+ */
+export const ArchiveCollectionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ArchiveCollectionResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})
+
+
+/**
+ * @summary Get all questions inside a collection
+ */
+export const GetCollectionQuestionsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCollectionQuestionsResponseItem = zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "type": zod.enum(['single_choice', 'multiple_choice', 'true_false', 'integer', 'numerical']),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "explanation": zod.string().nullish(),
+  "hint": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "positiveMarks": zod.number(),
+  "negativeMarks": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number(),
+  "subjectName": zod.string().nullish(),
+  "topicName": zod.string().nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "isCorrect": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})
+export const GetCollectionQuestionsResponse = zod.array(GetCollectionQuestionsResponseItem)
 
 
 /**
@@ -889,12 +1196,15 @@ export const GetResultResponse = zod.object({
 /**
  * @summary Get leaderboard (weekly/monthly/overall)
  */
-export const getLeaderboardQueryPeriodDefault = `weekly`;
+export const getLeaderboardQueryPeriodDefault = `overall`;
 export const getLeaderboardQueryLimitDefault = 50;
 
 export const GetLeaderboardQueryParams = zod.object({
-  "period": zod.enum(['weekly', 'monthly', 'overall']).default(getLeaderboardQueryPeriodDefault),
+  "period": zod.enum(['daily', 'weekly', 'monthly', 'overall']).default(getLeaderboardQueryPeriodDefault),
+  "subjectId": zod.coerce.number().nullish(),
   "examId": zod.coerce.number().nullish(),
+  "city": zod.coerce.string().nullish(),
+  "college": zod.coerce.string().nullish(),
   "limit": zod.coerce.number().default(getLeaderboardQueryLimitDefault)
 })
 
@@ -1149,6 +1459,421 @@ export const GetAdminStatsResponse = zod.object({
   "totalSessions": zod.number(),
   "revenueThisMonth": zod.number(),
   "newUsersThisWeek": zod.number()
+})
+
+
+/**
+ * @summary Get landing summary dashboard statistics
+ */
+export const GetRepositorySummaryResponse = zod.object({
+  "totalSubjects": zod.number(),
+  "totalTopics": zod.number(),
+  "totalQuestions": zod.number(),
+  "totalCollections": zod.number(),
+  "recentCollections": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})),
+  "recentQuestions": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "type": zod.enum(['single_choice', 'multiple_choice', 'true_false', 'integer', 'numerical']),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "explanation": zod.string().nullish(),
+  "hint": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "positiveMarks": zod.number(),
+  "negativeMarks": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number(),
+  "subjectName": zod.string().nullish(),
+  "topicName": zod.string().nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "isCorrect": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})),
+  "recentImports": zod.array(zod.object({
+  "date": zod.string(),
+  "subjectName": zod.string(),
+  "topicName": zod.string(),
+  "count": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number()
+})),
+  "recentlyUpdatedTopics": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "subjectName": zod.string(),
+  "subjectId": zod.number(),
+  "questionCount": zod.number(),
+  "lastUpdated": zod.string()
+}))
+})
+
+
+/**
+ * @summary Get topic summary statistics
+ */
+export const GetTopicSummaryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTopicSummaryResponse = zod.object({
+  "totalQuestions": zod.number(),
+  "totalCollections": zod.number(),
+  "publishedQuestions": zod.number(),
+  "draftQuestions": zod.number(),
+  "easyCount": zod.number(),
+  "mediumCount": zod.number(),
+  "hardCount": zod.number(),
+  "recentQuestions": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "type": zod.enum(['single_choice', 'multiple_choice', 'true_false', 'integer', 'numerical']),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "explanation": zod.string().nullish(),
+  "hint": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "positiveMarks": zod.number(),
+  "negativeMarks": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number(),
+  "subjectName": zod.string().nullish(),
+  "topicName": zod.string().nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "isCorrect": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+})),
+  "recentUpdates": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "type": zod.enum(['single_choice', 'multiple_choice', 'true_false', 'integer', 'numerical']),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "explanation": zod.string().nullish(),
+  "hint": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "positiveMarks": zod.number(),
+  "negativeMarks": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number(),
+  "subjectName": zod.string().nullish(),
+  "topicName": zod.string().nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "isCorrect": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Search subjects, topics, collections, and questions
+ */
+export const SearchRepositoryQueryParams = zod.object({
+  "query": zod.coerce.string()
+})
+
+export const SearchRepositoryResponse = zod.object({
+  "subjects": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "iconUrl": zod.string().nullish(),
+  "questionCount": zod.number()
+})),
+  "topics": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "subjectId": zod.number(),
+  "subjectName": zod.string(),
+  "questionCount": zod.number()
+})),
+  "collections": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isArchived": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "questionsCount": zod.number()
+})),
+  "questions": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "type": zod.enum(['single_choice', 'multiple_choice', 'true_false', 'integer', 'numerical']),
+  "difficulty": zod.enum(['easy', 'medium', 'hard']),
+  "explanation": zod.string().nullish(),
+  "hint": zod.string().nullish(),
+  "imageUrl": zod.string().nullish(),
+  "positiveMarks": zod.number(),
+  "negativeMarks": zod.number(),
+  "subjectId": zod.number(),
+  "topicId": zod.number(),
+  "subjectName": zod.string().nullish(),
+  "topicName": zod.string().nullish(),
+  "options": zod.array(zod.object({
+  "id": zod.number(),
+  "text": zod.string(),
+  "isCorrect": zod.boolean()
+})).optional(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Get gamification profile (XP, level, streaks, badges)
+ */
+export const GetGamificationProfileResponse = zod.object({
+  "xp": zod.number().optional(),
+  "level": zod.number().optional(),
+  "dailyStreak": zod.number().optional(),
+  "weeklyStreak": zod.number().optional(),
+  "monthlyStreak": zod.number().optional(),
+  "lastActivityDate": zod.string().nullish(),
+  "loginClaimedToday": zod.boolean().optional(),
+  "badges": zod.array(zod.object({
+  "badgeType": zod.string().optional(),
+  "earnedAt": zod.string().optional()
+})).optional(),
+  "config": zod.object({
+  "id": zod.number().optional(),
+  "dailyLoginXp": zod.number(),
+  "solveQuestionXp": zod.number(),
+  "readArticleXp": zod.number(),
+  "completeMissionXp": zod.number(),
+  "perfectAccuracyXp": zod.number()
+}).optional()
+})
+
+
+/**
+ * @summary Claim daily login reward
+ */
+export const ClaimLoginRewardResponse = zod.object({
+  "success": zod.boolean().optional(),
+  "xpEarned": zod.number().optional(),
+  "newXp": zod.number().optional(),
+  "newLevel": zod.number().optional(),
+  "dailyStreak": zod.number().optional(),
+  "weeklyStreak": zod.number().optional(),
+  "monthlyStreak": zod.number().optional(),
+  "leveledUp": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Get current gamification configurations (Admin)
+ */
+export const GetGamificationConfigResponse = zod.object({
+  "id": zod.number().optional(),
+  "dailyLoginXp": zod.number(),
+  "solveQuestionXp": zod.number(),
+  "readArticleXp": zod.number(),
+  "completeMissionXp": zod.number(),
+  "perfectAccuracyXp": zod.number()
+})
+
+
+/**
+ * @summary Update gamification configurations (Admin)
+ */
+export const UpdateGamificationConfigBody = zod.object({
+  "dailyLoginXp": zod.number(),
+  "solveQuestionXp": zod.number(),
+  "readArticleXp": zod.number(),
+  "completeMissionXp": zod.number(),
+  "perfectAccuracyXp": zod.number()
+})
+
+export const UpdateGamificationConfigResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Get today's daily missions progress
+ */
+export const GetDailyMissionsResponse = zod.object({
+  "missions": zod.array(zod.object({
+  "id": zod.number().optional(),
+  "userId": zod.number().optional(),
+  "date": zod.string().optional(),
+  "missionType": zod.string().optional(),
+  "description": zod.string().optional(),
+  "targetCount": zod.number().optional(),
+  "currentCount": zod.number().optional(),
+  "completed": zod.boolean().optional(),
+  "xpReward": zod.number().optional()
+})).optional(),
+  "xpGained": zod.number().optional(),
+  "newXp": zod.number().optional(),
+  "newLevel": zod.number().optional()
+})
+
+
+/**
+ * @summary Get user goals and target progress
+ */
+export const GetGoalsResponse = zod.object({
+  "targets": zod.object({
+  "dailyQuestions": zod.number().optional(),
+  "weeklyQuestions": zod.number().optional(),
+  "monthlyQuestions": zod.number().optional(),
+  "dailyMinutes": zod.number().optional(),
+  "dailyHours": zod.number().optional(),
+  "practiceAccuracy": zod.number().optional(),
+  "targetExam": zod.string().nullish(),
+  "targetScore": zod.number().nullish(),
+  "targetAccuracy": zod.number().nullish()
+}).optional(),
+  "progress": zod.object({
+  "dailyQuestions": zod.number().optional(),
+  "weeklyQuestions": zod.number().optional(),
+  "monthlyQuestions": zod.number().optional(),
+  "dailyHours": zod.number().optional()
+}).optional()
+})
+
+
+/**
+ * @summary Update personalized goals
+ */
+export const UpdateGoalsBody = zod.object({
+  "dailyQuestions": zod.number(),
+  "weeklyQuestions": zod.number(),
+  "monthlyQuestions": zod.number(),
+  "dailyMinutes": zod.number(),
+  "dailyHours": zod.number(),
+  "practiceAccuracy": zod.number(),
+  "targetExam": zod.string(),
+  "targetScore": zod.number(),
+  "targetAccuracy": zod.number()
+})
+
+export const UpdateGoalsResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Fetch manual study planner tasks
+ */
+export const GetStudyTasksResponseItem = zod.object({
+  "id": zod.number().optional(),
+  "userId": zod.number().optional(),
+  "title": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "category": zod.string().optional(),
+  "priority": zod.string().optional(),
+  "durationMinutes": zod.number().optional(),
+  "completed": zod.boolean().optional(),
+  "date": zod.string().optional()
+})
+export const GetStudyTasksResponse = zod.array(GetStudyTasksResponseItem)
+
+
+/**
+ * @summary Create a study task
+ */
+export const CreateStudyTaskBody = zod.object({
+  "title": zod.string(),
+  "description": zod.string().optional(),
+  "category": zod.string().optional(),
+  "priority": zod.string().optional(),
+  "durationMinutes": zod.number().optional(),
+  "date": zod.string()
+})
+
+export const CreateStudyTaskResponse = zod.object({
+  "id": zod.number().optional(),
+  "title": zod.string().optional()
+})
+
+
+/**
+ * @summary Update study task
+ */
+export const UpdateStudyTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateStudyTaskBody = zod.object({
+  "title": zod.string().optional(),
+  "description": zod.string().optional(),
+  "category": zod.string().optional(),
+  "priority": zod.string().optional(),
+  "durationMinutes": zod.number().optional(),
+  "completed": zod.boolean().optional(),
+  "date": zod.string().optional()
+})
+
+export const UpdateStudyTaskResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Delete study task
+ */
+export const DeleteStudyTaskParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteStudyTaskResponse = zod.object({
+  "success": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Get timeline performance data for interactive charts
+ */
+export const getTimelineAnalyticsQueryRangeDefault = `7days`;
+
+export const GetTimelineAnalyticsQueryParams = zod.object({
+  "range": zod.enum(['7days', '30days']).default(getTimelineAnalyticsQueryRangeDefault)
+})
+
+export const GetTimelineAnalyticsResponseItem = zod.object({
+  "date": zod.string().optional(),
+  "accuracy": zod.number().optional(),
+  "speed": zod.number().optional(),
+  "attempts": zod.number().optional(),
+  "hours": zod.number().optional(),
+  "revision": zod.number().optional(),
+  "currentAffairs": zod.number().optional(),
+  "mockTests": zod.number().optional(),
+  "adaptiveMastery": zod.number().optional()
+})
+export const GetTimelineAnalyticsResponse = zod.array(GetTimelineAnalyticsResponseItem)
+
+
+/**
+ * @summary Get performance-based student study advice and insights
+ */
+export const GetAiInsightsResponse = zod.object({
+  "strengths": zod.array(zod.string()).optional(),
+  "weaknesses": zod.array(zod.string()).optional(),
+  "studySuggestions": zod.array(zod.string()).optional(),
+  "bestTimeToStudy": zod.string().optional(),
+  "recommendedSubjects": zod.array(zod.string()).optional(),
+  "expectedExamReadiness": zod.string().optional(),
+  "revisionAdvice": zod.string().optional(),
+  "dailySummary": zod.string().optional(),
+  "weeklySummary": zod.string().optional()
 })
 
 

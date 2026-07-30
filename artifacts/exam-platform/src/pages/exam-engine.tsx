@@ -14,6 +14,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Clock, AlertTriangle, ChevronLeft, ChevronRight, CheckCircle2, BookmarkIcon, List, EyeOff, Calculator, X, Shield } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimizeCloudinaryUrl } from '@/lib/utils';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 
 type ViolationType = 'tab_switch' | 'window_blur' | 'fullscreen_exit' | 'context_menu' | 'copy_attempt';
 
@@ -59,6 +66,7 @@ export default function ExamEngine() {
   const [hasEntered, setHasEntered] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showMobilePalette, setShowMobilePalette] = useState(false);
   
   // Timer tracking per question
   const questionStartTimeRef = useRef<number>(Date.now());
@@ -446,6 +454,30 @@ export default function ExamEngine() {
     });
   };
 
+  const handlePrevious = () => {
+    if (currentIndex <= 0) return;
+
+    if (session?.questionTimerSeconds) {
+      toast({ title: "Navigation Restricted", description: "Moving back is disabled in timed quiz mode.", variant: "destructive" });
+      return;
+    }
+
+    const prevIndex = currentIndex - 1;
+    const targetQ = session?.questions[prevIndex];
+    const targetSection = session?.sections.find((s: any) => s.id === targetQ?.sectionId);
+
+    if (activeSection && targetSection && targetSection.order < activeSection.order) {
+      if (activeSection.navigationRule === 'lock_previous') {
+        toast({ title: "Navigation Blocked", description: "This section is locked. You cannot return to previous sections.", variant: "destructive" });
+        return;
+      }
+    }
+
+    const currentQ = session?.questions[currentIndex];
+    const status = localSelectedOption ? 'answered' : (currentQ?.status === 'not_visited' ? 'visited' : currentQ?.status || 'visited');
+    saveCurrentAnswer(status, prevIndex);
+  };
+
   const handleSaveAndNext = () => {
     const status = localSelectedOption ? 'answered' : 'visited';
     saveCurrentAnswer(status, currentIndex + 1);
@@ -574,32 +606,45 @@ export default function ExamEngine() {
   };
 
   return (
-    <div ref={engineRef} className="h-[100dvh] w-full bg-background flex flex-col select-none overflow-hidden font-sans">
+    <div ref={engineRef} className="h-[100dvh] w-full bg-slate-50 dark:bg-slate-950 flex flex-col select-none overflow-hidden font-sans pb-[env(safe-area-inset-bottom,0px)]">
       {/* Top Header */}
-      <header className="h-14 bg-[#1e293b] text-white flex items-center justify-between px-4 flex-shrink-0 shadow-md z-10">
-        <div className="flex items-center gap-3">
-          <div className="font-bold text-lg hidden md:block">{session.examTitle}</div>
-        </div>
-        
-        <div className="flex items-center gap-6">
+      <header className="h-14 bg-slate-900 border-b border-slate-800 text-white flex items-center justify-between px-4 flex-shrink-0 z-20">
+        {/* Left Side */}
+        <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3 min-w-0">
+          <div className="font-bold text-sm md:text-lg truncate max-w-[150px] md:max-w-none" title={session.examTitle}>
+            {session.examTitle}
+          </div>
+          <div className="text-[10px] md:text-xs font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded md:hidden w-fit">
+            Q{currentIndex + 1}/{session.questions.length}
+          </div>
           {activeSection && (
-            <div className="text-sm font-semibold px-3 py-1 bg-slate-800 rounded-md border border-slate-700 hidden sm:block">
-              Section: <span className="text-yellow-400">{activeSection.name}</span>
+            <div className="text-xs font-semibold text-slate-400 hidden md:block">
+              Section: <span className="text-yellow-400 font-bold">{activeSection.name}</span>
             </div>
           )}
-          
+        </div>
+
+        {/* Center Section Pill for mobile */}
+        {activeSection && (
+          <div className="text-[10px] font-semibold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded md:hidden truncate max-w-[80px]">
+            {activeSection.name}
+          </div>
+        )}
+
+        {/* Right Side - Timers */}
+        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
           {sectionTimeLeft !== null && (
-            <div className="flex items-center gap-2 bg-purple-950 px-3 py-1.5 rounded-md border border-purple-800 animate-pulse">
-              <Clock className="h-4 w-4 text-purple-400" />
-              <span className="font-mono text-sm font-bold tracking-wider text-purple-200">
-                Sec Time: {formatTime(sectionTimeLeft).slice(3)}
+            <div className="flex items-center gap-1 bg-purple-950/80 border border-purple-800 px-2 py-1 rounded text-purple-200">
+              <Clock className="h-3 w-3 text-purple-400" />
+              <span className="font-mono text-xs font-bold">
+                Sec: {formatTime(sectionTimeLeft).slice(3)}
               </span>
             </div>
           )}
-
-          <div className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700">
-            <Clock className={`h-4 w-4 ${timeLeft && timeLeft < 300 ? 'text-red-400 animate-pulse' : 'text-slate-300'}`} />
-            <span className={`font-mono text-lg font-bold tracking-wider ${timeLeft && timeLeft < 300 ? 'text-red-400' : 'text-white'}`}>
+          
+          <div className="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700 px-2.5 py-1 rounded">
+            <Clock className={`h-3.5 w-3.5 ${timeLeft && timeLeft < 300 ? 'text-red-400 animate-pulse' : 'text-slate-300'}`} />
+            <span className={`font-mono text-sm md:text-base font-bold ${timeLeft && timeLeft < 300 ? 'text-red-400' : 'text-white'}`}>
               {formatTime(timeLeft)}
             </span>
           </div>
@@ -610,102 +655,160 @@ export default function ExamEngine() {
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         
         {/* Left Pane - Question Area */}
-        <div className="flex-1 flex flex-col overflow-hidden border-r">
-          <div className="h-12 bg-muted/30 border-b flex items-center justify-between px-4 flex-shrink-0">
-            <h3 className="font-semibold">Question {currentIndex + 1} of {session.questions.length}</h3>
-            {activeSection && <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-1 rounded sm:hidden">Section: {activeSection.name}</span>}
+        <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
+          {/* Question title bar (Desktop only) */}
+          <div className="hidden md:flex h-12 bg-slate-50 dark:bg-slate-900 border-b flex-shrink-0 items-center justify-between px-6">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-200">
+              Question {currentIndex + 1} of {session.questions.length}
+            </h3>
+            {activeSection && (
+              <span className="text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
+                Section: {activeSection.name}
+              </span>
+            )}
           </div>
 
           {questionTimeLeft !== null && session.questionTimerSeconds && (
-            <div className="w-full bg-slate-100 dark:bg-slate-900 h-4 flex-shrink-0 relative overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-1 flex-shrink-0 relative overflow-hidden">
               <div 
-                className={`h-full transition-all duration-1000 ${questionTimeLeft < 10 ? 'bg-red-500 animate-pulse' : 'bg-blue-600'}`}
+                className={`h-full transition-all duration-1000 ${questionTimeLeft < 10 ? 'bg-red-500 animate-pulse' : 'bg-primary'}`}
                 style={{ width: `${(questionTimeLeft / session.questionTimerSeconds) * 100}%` }}
               ></div>
-              <div className="absolute right-3 top-0.5 text-[10px] font-bold text-muted-foreground">
-                Question Timer: {questionTimeLeft}s remaining
-              </div>
             </div>
           )}
           
-          <div className="flex-1 overflow-auto p-6 lg:p-10 scroll-smooth">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-xl leading-relaxed font-medium mb-8 text-foreground select-none">
+          {/* Main Question Display Area */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-10 scroll-smooth">
+            <div className="max-w-3xl mx-auto">
+              
+              {/* Question Text */}
+              <div className="text-base md:text-lg font-medium leading-relaxed mb-6 text-slate-800 dark:text-slate-200 select-none">
                 {currentQ?.text}
               </div>
               
+              {/* Image Section */}
               {currentQ?.imageUrl && (
-                <div className="mb-8 rounded-lg overflow-hidden border inline-block">
-                  <img src={optimizeCloudinaryUrl(currentQ.imageUrl, { width: 800 })} alt="Question figure" className="max-h-80 object-contain" draggable="false" loading="lazy" />
+                <div className="mb-6 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-2 flex justify-center">
+                  <img 
+                    src={optimizeCloudinaryUrl(currentQ.imageUrl, { width: 800 })} 
+                    alt="Question figure" 
+                    className="max-h-60 md:max-h-80 w-auto max-w-full object-contain rounded-lg" 
+                    draggable="false" 
+                    loading="lazy" 
+                  />
                 </div>
               )}
 
-              <div className="space-y-4">
+              {/* Options Header & Clear Button */}
+              <div className="flex items-center justify-between mb-4 mt-6">
+                <h4 className="text-xs uppercase tracking-wider font-bold text-slate-400">
+                  Select Option
+                </h4>
+                {localSelectedOption && !session.questionTimerSeconds && (
+                  <button
+                    type="button"
+                    onClick={handleClearResponse}
+                    className="text-xs font-semibold text-red-500 dark:text-red-400 hover:text-red-600 transition-colors flex items-center gap-1"
+                  >
+                    <X className="h-3.5 w-3.5" /> Clear Response
+                  </button>
+                )}
+              </div>
+
+              {/* Options Cards */}
+              <div className="space-y-3 md:space-y-4">
                 {(currentQ?.options ?? []).map((opt, i) => (
-                  <div 
+                  <button 
                     key={opt.id}
+                    type="button"
                     onClick={() => setLocalSelectedOption(opt.id)}
                     className={`
-                      p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-4
+                      w-full text-left py-3.5 px-4 rounded-xl border-2 transition-all flex items-center gap-3.5 min-h-[52px]
+                      focus:outline-none focus:ring-2 focus:ring-primary/40 active:scale-[0.99]
                       ${localSelectedOption === opt.id 
-                        ? 'border-primary bg-primary/5 shadow-sm' 
-                        : 'border-border hover:border-primary/40 hover:bg-muted/30'}
+                        ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-sm' 
+                        : 'border-slate-200 dark:border-slate-800 hover:border-primary/30 hover:bg-slate-50/50 dark:hover:bg-slate-900/50'}
                     `}
                   >
                     <div className={`
-                      w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 transition-colors
-                      ${localSelectedOption === opt.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}
+                      w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 transition-colors
+                      ${localSelectedOption === opt.id 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}
                     `}>
                       {String.fromCharCode(65 + i)}
                     </div>
-                    <div className="text-lg">{opt.text}</div>
-                  </div>
+                    <div className="text-sm md:text-base font-medium text-slate-700 dark:text-slate-300 leading-snug">
+                      {opt.text}
+                    </div>
+                  </button>
                 ))}
               </div>
             </div>
           </div>
           
           {/* Action Footer */}
-          <div className="h-16 bg-card border-t flex items-center justify-between px-4 lg:px-8 flex-shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+          <div className="h-16 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-8 flex-shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handlePrevious}
+                disabled={currentIndex === 0 || !!session.questionTimerSeconds}
+                className="flex items-center gap-1.5 h-11 px-3 md:px-4 rounded-xl text-sm font-semibold"
+              >
+                <ChevronLeft className="h-4 w-4" /> <span className="hidden sm:inline">Previous</span>
+              </Button>
+
               <Button 
                 variant="outline" 
                 onClick={handleClearResponse}
                 disabled={!localSelectedOption || !!session.questionTimerSeconds}
-                className="hidden sm:flex"
+                className="hidden md:flex h-11 px-4 rounded-xl text-sm font-semibold"
               >
                 Clear Response
               </Button>
+              
               <Button 
                 variant="secondary" 
                 onClick={handleMarkForReview}
                 disabled={!!session.questionTimerSeconds}
-                className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"
+                className="bg-purple-50 dark:bg-purple-950/20 text-purple-700 dark:text-purple-300 hover:bg-purple-100 border-purple-200 dark:border-purple-900/50 h-11 px-3 md:px-4 rounded-xl text-sm font-semibold flex items-center gap-1.5"
               >
-                Mark for Review & Next
+                <BookmarkIcon className="h-4 w-4" /> 
+                <span className="hidden sm:inline">Mark for Review & Next</span>
+                <span className="sm:hidden">Mark</span>
               </Button>
             </div>
             
             <div className="flex gap-2">
-              <Button 
-                onClick={handleSaveAndNext}
-                className="bg-green-600 hover:bg-green-700 text-white min-w-[140px] shadow-sm"
-              >
-                Save & Next <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
+              {currentIndex === session.questions.length - 1 ? (
+                <Button 
+                  onClick={() => setShowSubmitConfirm(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 px-5 md:px-6 rounded-xl text-sm shadow-md"
+                >
+                  Submit Test
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSaveAndNext}
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold h-11 px-5 md:px-6 rounded-xl text-sm shadow-sm flex items-center gap-1.5"
+                >
+                  Save & Next <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right Pane - Question Palette */}
-        <div className="w-full md:w-80 bg-slate-50 flex flex-col flex-shrink-0 border-l shadow-sm overflow-hidden">
-          <div className="p-4 bg-slate-100 border-b">
-            <div className="flex items-center gap-2 font-semibold text-slate-800 mb-3">
+        {/* Right Pane - Question Palette (Desktop Only) */}
+        <div className="hidden md:flex w-80 bg-slate-50 dark:bg-slate-950 flex-col flex-shrink-0 border-l border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="p-4 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-200 mb-3">
               <List className="h-4 w-4" /> Question Palette
             </div>
             
             {/* Status Legend */}
-            <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-slate-600">
+            <div className="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-slate-600 dark:text-slate-400">
               <div className="flex items-center gap-2"><div className={`w-5 h-5 rounded-md border ${statusColors.answered}`}></div> Answered ({stats.answered || 0})</div>
               <div className="flex items-center gap-2"><div className={`w-5 h-5 rounded-md border ${statusColors.visited}`}></div> Not Answered ({stats.visited || 0})</div>
               <div className="flex items-center gap-2"><div className={`w-5 h-5 rounded-md border ${statusColors.not_visited}`}></div> Not Visited ({stats.not_visited || 0})</div>
@@ -715,7 +818,7 @@ export default function ExamEngine() {
           </div>
           
           <div className="flex-1 overflow-auto p-4">
-            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {session.questions.map((q, i) => {
                 let sClass = statusColors[q.status];
                 const isActive = currentIndex === i;
@@ -733,7 +836,7 @@ export default function ExamEngine() {
                     disabled={isLocked}
                     className={`
                       h-10 rounded-md font-medium text-sm border shadow-sm transition-all relative flex items-center justify-center
-                      ${isLocked ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-50' : sClass}
+                      ${isLocked ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-50 dark:bg-slate-800 dark:border-slate-700' : sClass}
                       ${isActive ? 'ring-2 ring-primary ring-offset-2 scale-110 z-10' : !isLocked ? 'hover:opacity-80' : ''}
                     `}
                   >
@@ -744,7 +847,7 @@ export default function ExamEngine() {
             </div>
           </div>
           
-          <div className="p-4 border-t bg-slate-100 flex-shrink-0">
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 flex-shrink-0">
             <Button 
               variant="default" 
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 text-lg shadow-md"
@@ -755,6 +858,92 @@ export default function ExamEngine() {
           </div>
         </div>
       </div>
+
+      {/* Floating Question Palette Button (Mobile Only) */}
+      <div className="md:hidden fixed bottom-20 left-4 z-40">
+        <Button 
+          variant="outline" 
+          size="icon" 
+          className="h-12 w-12 rounded-full bg-purple-600 text-white shadow-lg hover:bg-purple-700 flex items-center justify-center border-0"
+          onClick={() => setShowMobilePalette(true)}
+        >
+          <List className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Mobile Question Palette Bottom Sheet */}
+      <Sheet open={showMobilePalette} onOpenChange={setShowMobilePalette}>
+        <SheetContent side="bottom" className="h-[75vh] rounded-t-2xl px-4 pb-6 pt-2 flex flex-col gap-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-2 flex-shrink-0" />
+          <SheetHeader className="text-left flex-shrink-0">
+            <SheetTitle className="text-lg font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+              <List className="h-5 w-5" /> Question Palette
+            </SheetTitle>
+            <SheetDescription className="text-slate-500 dark:text-slate-400">
+              Select a question to jump directly to it.
+            </SheetDescription>
+          </SheetHeader>
+          
+          {/* Status Legend */}
+          <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800 flex-shrink-0">
+            <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded border ${statusColors.answered}`}></div> Answered ({stats.answered || 0})</div>
+            <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded border ${statusColors.visited}`}></div> Not Answered ({stats.visited || 0})</div>
+            <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded border ${statusColors.not_visited}`}></div> Not Visited ({stats.not_visited || 0})</div>
+            <div className="flex items-center gap-2"><div className={`w-4 h-4 rounded border ${statusColors.marked}`}></div> Marked ({stats.marked || 0})</div>
+            <div className="flex items-center gap-2 col-span-2"><div className={`w-4 h-4 rounded border relative ${statusColors.marked_answered}`}></div> Answered & Marked for Review ({stats.marked_answered || 0})</div>
+          </div>
+          
+          {/* Question Grid */}
+          <div className="flex-1 overflow-y-auto min-h-0 pr-1">
+            <div className="grid grid-cols-5 gap-2.5 py-1">
+              {session.questions.map((q, i) => {
+                let sClass = statusColors[q.status];
+                const isActive = currentIndex === i;
+                
+                const targetQ = q;
+                const targetSection = session.sections.find((s: any) => s.id === targetQ.sectionId);
+                const isSectionLocked = activeSection && targetSection && targetSection.order < activeSection.order && activeSection.navigationRule === 'lock_previous';
+                const isQuizTimerLocked = !!session.questionTimerSeconds && i !== currentIndex;
+                const isLocked = isSectionLocked || isQuizTimerLocked;
+                
+                return (
+                  <button
+                    key={q.id}
+                    onClick={() => {
+                      if (!isLocked) {
+                        handleJumpToQuestion(i);
+                        setShowMobilePalette(false);
+                      }
+                    }}
+                    disabled={isLocked}
+                    className={`
+                      h-11 rounded-xl font-semibold text-sm border shadow-sm transition-all flex items-center justify-center
+                      ${isLocked ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-50 dark:bg-slate-800 dark:border-slate-700' : sClass}
+                      ${isActive ? 'ring-2 ring-primary ring-offset-2 scale-105 z-10' : !isLocked ? 'hover:scale-105' : ''}
+                    `}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          
+          {/* Submit button inside sheet */}
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-auto flex-shrink-0">
+            <Button 
+              variant="default" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl text-lg shadow-md"
+              onClick={() => {
+                setShowMobilePalette(false);
+                setShowSubmitConfirm(true);
+              }}
+            >
+              Submit Test
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Warnings & Modals */}
       <Dialog open={showWarning} onOpenChange={setShowWarning}>

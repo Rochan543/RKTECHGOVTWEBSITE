@@ -36,6 +36,8 @@ tags:
     description: Study notes & PDFs
   - name: categories
     description: Exam categories
+  - name: collections
+    description: Question collections management
 
 paths:
   /healthz:
@@ -410,6 +412,135 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExamStats"
 
+  /v1/exams/{id}/collections:
+    get:
+      operationId: getExamCollections
+      tags: [exams]
+      summary: Get collections linked to an exam
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Linked collections
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuestionCollection"
+    post:
+      operationId: saveExamCollections
+      tags: [exams]
+      summary: Link collections to an exam
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveExamCollectionsInput"
+      responses:
+        "200":
+          description: Collections linked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, count]
+                properties:
+                  success:
+                    type: boolean
+                  count:
+                    type: number
+
+  /v1/exams/{id}/collections/{collectionId}:
+    delete:
+      operationId: removeExamCollection
+      tags: [exams]
+      summary: Unlink a collection from an exam
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+        - name: collectionId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Collection unlinked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+
+  /v1/exams/preview-collections:
+    post:
+      operationId: previewCollections
+      tags: [exams]
+      summary: Preview merged questions from multiple collections
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewCollectionsInput"
+      responses:
+        "200":
+          description: Preview of merged collections questions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [totalQuestions, totalMarks, duplicatesRemoved, difficultyDistribution, collections, questions]
+                properties:
+                  totalQuestions:
+                    type: number
+                  totalMarks:
+                    type: number
+                  duplicatesRemoved:
+                    type: number
+                  difficultyDistribution:
+                    type: object
+                    required: [easy, medium, hard]
+                    properties:
+                      easy:
+                        type: number
+                      medium:
+                        type: number
+                      hard:
+                        type: number
+                  collections:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id:
+                          type: number
+                        name:
+                          type: string
+                  questions:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Question"
+
   # ─── Subjects ────────────────────────────────────────────────────────────────
   /v1/subjects:
     get:
@@ -480,6 +611,235 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Topic"
+
+  # ─── Collections ─────────────────────────────────────────────────────────────
+  /v1/collections:
+    get:
+      operationId: listCollections
+      tags: [collections]
+      summary: List all question collections
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: number
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: number
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: isArchived
+          in: query
+          schema:
+            type: ["boolean", "null"]
+        - name: subjectId
+          in: query
+          schema:
+            type: ["number", "null"]
+        - name: topicId
+          in: query
+          schema:
+            type: ["number", "null"]
+        - name: difficulty
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: collectionType
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: status
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: sortBy
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: questionCountRange
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: List of collections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionCollectionListResponse"
+    post:
+      operationId: createCollection
+      tags: [collections]
+      summary: Create a new question collection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionCollectionInput"
+      responses:
+        "201":
+          description: Created collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionCollection"
+
+  /v1/collections/{id}:
+    get:
+      operationId: getCollection
+      tags: [collections]
+      summary: Get details of a question collection including items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Collection details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionCollectionDetail"
+    put:
+      operationId: updateCollection
+      tags: [collections]
+      summary: Update a question collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuestionCollectionUpdate"
+      responses:
+        "200":
+          description: Updated collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionCollection"
+    delete:
+      operationId: deleteCollection
+      tags: [collections]
+      summary: Delete a question collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Collection deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /v1/collections/{id}/items:
+    post:
+      operationId: updateCollectionItems
+      tags: [collections]
+      summary: Set/update the questions in a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CollectionItemsUpdateInput"
+      responses:
+        "200":
+          description: Collection items updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  count:
+                    type: number
+
+  /v1/collections/{id}/duplicate:
+    post:
+      operationId: duplicateCollection
+      tags: [collections]
+      summary: Duplicate a collection and its items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "201":
+          description: Duplicated collection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionCollection"
+
+  /v1/collections/{id}/archive:
+    post:
+      operationId: archiveCollection
+      tags: [collections]
+      summary: Toggle archive status of a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Archive status toggled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuestionCollection"
+
+  /v1/collections/{id}/questions:
+    get:
+      operationId: getCollectionQuestions
+      tags: [collections]
+      summary: Get all questions inside a collection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: List of questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Question"
 
   # ─── Questions ───────────────────────────────────────────────────────────────
   /v1/questions:
@@ -755,12 +1115,24 @@ paths:
           in: query
           schema:
             type: string
-            enum: [weekly, monthly, overall]
-            default: weekly
+            enum: [daily, weekly, monthly, overall]
+            default: overall
+        - name: subjectId
+          in: query
+          schema:
+            type: ["number", "null"]
         - name: examId
           in: query
           schema:
             type: ["number", "null"]
+        - name: city
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: college
+          in: query
+          schema:
+            type: ["string", "null"]
         - name: limit
           in: query
           schema:
@@ -1004,8 +1376,435 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdminStats"
 
+  /v1/repository/summary:
+    get:
+      operationId: getRepositorySummary
+      tags: [repository]
+      summary: Get landing summary dashboard statistics
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepositorySummary"
+
+  /v1/repository/topics/{id}/summary:
+    get:
+      operationId: getTopicSummary
+      tags: [repository]
+      summary: Get topic summary statistics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Topic stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopicSummary"
+
+  /v1/repository/search:
+    get:
+      operationId: searchRepository
+      tags: [repository]
+      summary: Search subjects, topics, collections, and questions
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Grouped search results
+          content:
+            application/json:
+              schema:
+                 $ref: "#/components/schemas/RepositorySearch"
+
+  /v1/gamification/profile:
+    get:
+      operationId: getGamificationProfile
+      tags: [dashboard]
+      summary: Get gamification profile (XP, level, streaks, badges)
+      responses:
+        "200":
+          description: User gamification profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  xp: { type: number }
+                  level: { type: number }
+                  dailyStreak: { type: number }
+                  weeklyStreak: { type: number }
+                  monthlyStreak: { type: number }
+                  lastActivityDate: { type: ["string", "null"] }
+                  loginClaimedToday: { type: boolean }
+                  badges:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        badgeType: { type: string }
+                        earnedAt: { type: string }
+                  config:
+                    $ref: "#/components/schemas/GamificationConfig"
+
+  /v1/gamification/claim-login:
+    post:
+      operationId: claimLoginReward
+      tags: [dashboard]
+      summary: Claim daily login reward
+      responses:
+        "200":
+          description: Login reward claim response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  xpEarned: { type: number }
+                  newXp: { type: number }
+                  newLevel: { type: number }
+                  dailyStreak: { type: number }
+                  weeklyStreak: { type: number }
+                  monthlyStreak: { type: number }
+                  leveledUp: { type: boolean }
+
+  /v1/admin/gamification/config:
+    get:
+      operationId: getGamificationConfig
+      tags: [dashboard]
+      summary: Get current gamification configurations (Admin)
+      responses:
+        "200":
+          description: Current configs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GamificationConfig"
+    post:
+      operationId: updateGamificationConfig
+      tags: [dashboard]
+      summary: Update gamification configurations (Admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGamificationConfigInput"
+      responses:
+        "200":
+          description: Configuration updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+
+  /v1/missions/today:
+    get:
+      operationId: getDailyMissions
+      tags: [dashboard]
+      summary: Get today's daily missions progress
+      responses:
+        "200":
+          description: Today's missions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  missions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: number }
+                        userId: { type: number }
+                        date: { type: string }
+                        missionType: { type: string }
+                        description: { type: string }
+                        targetCount: { type: number }
+                        currentCount: { type: number }
+                        completed: { type: boolean }
+                        xpReward: { type: number }
+                  xpGained: { type: number }
+                  newXp: { type: number }
+                  newLevel: { type: number }
+
+  /v1/goals:
+    get:
+      operationId: getGoals
+      tags: [dashboard]
+      summary: Get user goals and target progress
+      responses:
+        "200":
+          description: Goals and progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  targets:
+                    type: object
+                    properties:
+                      dailyQuestions: { type: number }
+                      weeklyQuestions: { type: number }
+                      monthlyQuestions: { type: number }
+                      dailyMinutes: { type: number }
+                      dailyHours: { type: number }
+                      practiceAccuracy: { type: number }
+                      targetExam: { type: ["string", "null"] }
+                      targetScore: { type: ["number", "null"] }
+                      targetAccuracy: { type: ["number", "null"] }
+                  progress:
+                    type: object
+                    properties:
+                      dailyQuestions: { type: number }
+                      weeklyQuestions: { type: number }
+                      monthlyQuestions: { type: number }
+                      dailyHours: { type: number }
+    post:
+      operationId: updateGoals
+      tags: [dashboard]
+      summary: Update personalized goals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGoalsInput"
+      responses:
+        "200":
+          description: Goals updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+
+  /v1/study-planner/tasks:
+    get:
+      operationId: getStudyTasks
+      tags: [dashboard]
+      summary: Fetch manual study planner tasks
+      responses:
+        "200":
+          description: List of study tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: number }
+                    userId: { type: number }
+                    title: { type: string }
+                    description: { type: ["string", "null"] }
+                    category: { type: string }
+                    priority: { type: string }
+                    durationMinutes: { type: number }
+                    completed: { type: boolean }
+                    date: { type: string }
+    post:
+      operationId: createStudyTask
+      tags: [dashboard]
+      summary: Create a study task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStudyTaskInput"
+      responses:
+        "200":
+          description: Task created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: number }
+                  title: { type: string }
+
+  /v1/study-planner/tasks/{id}:
+    put:
+      operationId: updateStudyTask
+      tags: [dashboard]
+      summary: Update study task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: number }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStudyTaskInput"
+      responses:
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+    delete:
+      operationId: deleteStudyTask
+      tags: [dashboard]
+      summary: Delete study task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: number }
+      responses:
+        "200":
+          description: Task deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+
+  /v1/analytics/timeline:
+    get:
+      operationId: getTimelineAnalytics
+      tags: [dashboard]
+      summary: Get timeline performance data for interactive charts
+      parameters:
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [7days, 30days]
+            default: 7days
+      responses:
+        "200":
+          description: Timeline data points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    date: { type: string }
+                    accuracy: { type: number }
+                    speed: { type: number }
+                    attempts: { type: number }
+                    hours: { type: number }
+                    revision: { type: number }
+                    currentAffairs: { type: number }
+                    mockTests: { type: number }
+                    adaptiveMastery: { type: number }
+
+  /v1/analytics/ai-insights:
+    get:
+      operationId: getAiInsights
+      tags: [dashboard]
+      summary: Get performance-based student study advice and insights
+      responses:
+        "200":
+          description: AI suggestions and summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  strengths:
+                    type: array
+                    items: { type: string }
+                  weaknesses:
+                    type: array
+                    items: { type: string }
+                  studySuggestions:
+                    type: array
+                    items: { type: string }
+                  bestTimeToStudy: { type: string }
+                  recommendedSubjects:
+                    type: array
+                    items: { type: string }
+                  expectedExamReadiness: { type: string }
+                  revisionAdvice: { type: string }
+                  dailySummary: { type: string }
+                  weeklySummary: { type: string }
+
 components:
   schemas:
+    GamificationConfig:
+      type: object
+      properties:
+        id: { type: number }
+        dailyLoginXp: { type: number }
+        solveQuestionXp: { type: number }
+        readArticleXp: { type: number }
+        completeMissionXp: { type: number }
+        perfectAccuracyXp: { type: number }
+      required: [dailyLoginXp, solveQuestionXp, readArticleXp, completeMissionXp, perfectAccuracyXp]
+
+    UpdateGamificationConfigInput:
+      type: object
+      properties:
+        dailyLoginXp: { type: number }
+        solveQuestionXp: { type: number }
+        readArticleXp: { type: number }
+        completeMissionXp: { type: number }
+        perfectAccuracyXp: { type: number }
+      required: [dailyLoginXp, solveQuestionXp, readArticleXp, completeMissionXp, perfectAccuracyXp]
+
+    UpdateGoalsInput:
+      type: object
+      properties:
+        dailyQuestions: { type: number }
+        weeklyQuestions: { type: number }
+        monthlyQuestions: { type: number }
+        dailyMinutes: { type: number }
+        dailyHours: { type: number }
+        practiceAccuracy: { type: number }
+        targetExam: { type: string }
+        targetScore: { type: number }
+        targetAccuracy: { type: number }
+      required: [dailyQuestions, weeklyQuestions, monthlyQuestions, dailyMinutes, dailyHours, practiceAccuracy, targetExam, targetScore, targetAccuracy]
+
+    CreateStudyTaskInput:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        category: { type: string }
+        priority: { type: string }
+        durationMinutes: { type: number }
+        date: { type: string }
+      required: [title, date]
+
+    UpdateStudyTaskInput:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        category: { type: string }
+        priority: { type: string }
+        durationMinutes: { type: number }
+        completed: { type: boolean }
+        date: { type: string }
+
     HealthStatus:
       type: object
       properties:
@@ -2035,3 +2834,217 @@ components:
           type: number
         newUsersThisWeek:
           type: number
+
+    QuestionCollection:
+      type: object
+      required: [id, name, isArchived, createdAt, updatedAt, questionsCount]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        isArchived:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        questionsCount:
+          type: number
+
+    QuestionCollectionDetail:
+      type: object
+      required: [id, name, isArchived, createdAt, updatedAt, questionsCount, questions]
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        isArchived:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        questionsCount:
+          type: number
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+
+    QuestionCollectionInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+
+    QuestionCollectionUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        isArchived:
+          type: boolean
+
+    QuestionCollectionListResponse:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionCollection"
+        total:
+          type: number
+        page:
+          type: number
+        limit:
+          type: number
+
+    CollectionItemsUpdateInput:
+      type: object
+      required: [questionIds]
+      properties:
+        questionIds:
+          type: array
+          items:
+            type: number
+
+    RepositorySummary:
+      type: object
+      required: [totalSubjects, totalTopics, totalQuestions, totalCollections, recentCollections, recentQuestions, recentImports, recentlyUpdatedTopics]
+      properties:
+        totalSubjects:
+          type: number
+        totalTopics:
+          type: number
+        totalQuestions:
+          type: number
+        totalCollections:
+          type: number
+        recentCollections:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionCollection"
+        recentQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+        recentImports:
+          type: array
+          items:
+            type: object
+            required: [date, subjectName, topicName, count, subjectId, topicId]
+            properties:
+              date:
+                type: string
+              subjectName:
+                type: string
+              topicName:
+                type: string
+              count:
+                type: number
+              subjectId:
+                type: number
+              topicId:
+                type: number
+        recentlyUpdatedTopics:
+          type: array
+          items:
+            type: object
+            required: [id, name, subjectName, subjectId, questionCount, lastUpdated]
+            properties:
+              id:
+                type: number
+              name:
+                type: string
+              subjectName:
+                type: string
+              subjectId:
+                type: number
+              questionCount:
+                type: number
+              lastUpdated:
+                type: string
+
+    TopicSummary:
+      type: object
+      required: [totalQuestions, totalCollections, publishedQuestions, draftQuestions, easyCount, mediumCount, hardCount, recentQuestions, recentUpdates]
+      properties:
+        totalQuestions:
+          type: number
+        totalCollections:
+          type: number
+        publishedQuestions:
+          type: number
+        draftQuestions:
+          type: number
+        easyCount:
+          type: number
+        mediumCount:
+          type: number
+        hardCount:
+          type: number
+        recentQuestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+        recentUpdates:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+
+    RepositorySearch:
+      type: object
+      required: [subjects, topics, collections, questions]
+      properties:
+        subjects:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subject"
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Topic"
+        collections:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionCollection"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Question"
+
+    SaveExamCollectionsInput:
+      type: object
+      required: [collectionIds]
+      properties:
+        collectionIds:
+          type: array
+          items:
+            type: number
+
+    PreviewCollectionsInput:
+      type: object
+      required: [collectionIds]
+      properties:
+        collectionIds:
+          type: array
+          items:
+            type: number
+
+

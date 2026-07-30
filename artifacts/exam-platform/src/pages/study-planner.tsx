@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,51 +9,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { CalendarDays, Plus, CheckCircle2, Circle, Trash2, Target, Clock, BookOpen, Trophy } from 'lucide-react';
-import { getCookie, setCookie } from '@/lib/utils';
+import { 
+  useGetStudyTasks, 
+  getGetStudyTasksQueryKey,
+  useCreateStudyTask, 
+  useUpdateStudyTask, 
+  useDeleteStudyTask,
+  customFetch
+} from '@workspace/api-client-react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 
 type Priority = 'high' | 'medium' | 'low';
 type Category = 'Quantitative' | 'Reasoning' | 'English' | 'General Awareness' | 'Computer' | 'Custom';
 
-interface StudyTask {
-  id: string;
-  title: string;
-  description: string;
-  category: Category;
-  priority: Priority;
-  durationMinutes: number;
-  completed: boolean;
-  date: string; // YYYY-MM-DD
-  createdAt: number;
-}
-
-const STORAGE_KEY = 'ssc-study-planner-tasks';
-
-function loadTasks(): StudyTask[] {
-  try {
-    const saved = getCookie(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveTasks(tasks: StudyTask[]) {
-  setCookie(STORAGE_KEY, JSON.stringify(tasks));
-}
-
 const PRIORITY_COLORS: Record<Priority, string> = {
-  high: 'bg-red-100 text-red-700 border-red-200',
-  medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  low: 'bg-green-100 text-green-700 border-green-200',
+  high: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-400 dark:border-red-900/20',
+  medium: 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-950/20 dark:text-yellow-400 dark:border-yellow-900/20',
+  low: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950/20 dark:text-green-400 dark:border-green-900/20',
 };
 
 const CATEGORY_COLORS: Record<Category, string> = {
-  Quantitative: 'bg-blue-100 text-blue-700',
-  Reasoning: 'bg-purple-100 text-purple-700',
-  English: 'bg-green-100 text-green-700',
-  'General Awareness': 'bg-orange-100 text-orange-700',
-  Computer: 'bg-cyan-100 text-cyan-700',
-  Custom: 'bg-gray-100 text-gray-700',
+  Quantitative: 'bg-blue-100 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400',
+  Reasoning: 'bg-purple-100 text-purple-700 dark:bg-purple-950/20 dark:text-purple-400',
+  English: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400',
+  'General Awareness': 'bg-orange-100 text-orange-700 dark:bg-orange-950/20 dark:text-orange-400',
+  Computer: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-400',
+  Custom: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
 };
 
 function getWeekDates(): { date: string; label: string; dayName: string }[] {
@@ -73,10 +54,10 @@ function getWeekDates(): { date: string; label: string; dayName: string }[] {
 }
 
 export default function StudyPlanner() {
-  const [tasks, setTasks] = useState<StudyTask[]>(loadTasks);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [showAdd, setShowAdd] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     title: '',
@@ -89,72 +70,107 @@ export default function StudyPlanner() {
   const weekDates = getWeekDates();
   const todayISO = new Date().toISOString().split('T')[0];
 
-  const dayTasks = tasks.filter(t => t.date === selectedDate).sort((a, b) => {
-    const pri = { high: 0, medium: 1, low: 2 };
-    return pri[a.priority] - pri[b.priority];
+  // Fetch planner tasks from DB
+  const { data: dbTasks = [], isLoading: tasksLoading } = useGetStudyTasks({
+    query: { queryKey: getGetStudyTasksQueryKey() }
   });
 
-  const completedToday = dayTasks.filter(t => t.completed).length;
-  const totalMinutesToday = dayTasks.reduce((s, t) => s + t.durationMinutes, 0);
-  const completedMinutesToday = dayTasks.filter(t => t.completed).reduce((s, t) => s + t.durationMinutes, 0);
+  // Fetch today's study plan (adaptive tasks)
+  const { data: studyPlan } = useQuery<any>({
+    queryKey: ['adaptive', 'study-plan', selectedDate],
+    queryFn: () => customFetch(`/api/v1/adaptive/study-plan?date=${selectedDate}`),
+  });
 
-  const updateTasks = (updated: StudyTask[]) => {
-    setTasks(updated);
-    saveTasks(updated);
-  };
+  // Task Mutations
+  const createTaskMutation = useCreateStudyTask({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: 'Task added successfully!' });
+        queryClient.invalidateQueries({ queryKey: getGetStudyTasksQueryKey() });
+        setShowAdd(false);
+        setForm({ title: '', description: '', category: 'Quantitative', priority: 'medium', durationMinutes: 60 });
+      }
+    }
+  });
 
-  const addTask = () => {
+  const updateTaskMutation = useUpdateStudyTask({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetStudyTasksQueryKey() });
+      }
+    }
+  });
+
+  const deleteTaskMutation = useDeleteStudyTask({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: 'Task deleted' });
+        queryClient.invalidateQueries({ queryKey: getGetStudyTasksQueryKey() });
+      }
+    }
+  });
+
+  const dayTasks = dbTasks.filter((t: any) => t.date === selectedDate).sort((a: any, b: any) => {
+    const pri = { high: 0, medium: 1, low: 2 };
+    return pri[a.priority as Priority] - pri[b.priority as Priority];
+  });
+
+  const completedToday = dayTasks.filter((t: any) => t.completed).length;
+  const totalMinutesToday = dayTasks.reduce((s: number, t: any) => s + t.durationMinutes, 0);
+  const completedMinutesToday = dayTasks.filter((t: any) => t.completed).reduce((s: number, t: any) => s + t.durationMinutes, 0);
+
+  const handleAddTask = () => {
     if (!form.title.trim()) {
       toast({ title: 'Please enter a task title', variant: 'destructive' });
       return;
     }
-    const newTask: StudyTask = {
-      id: Math.random().toString(36).slice(2),
-      ...form,
-      completed: false,
-      date: selectedDate,
-      createdAt: Date.now(),
-    };
-    updateTasks([...tasks, newTask]);
-    setForm({ title: '', description: '', category: 'Quantitative', priority: 'medium', durationMinutes: 60 });
-    setShowAdd(false);
-    toast({ title: 'Study task added!' });
+    createTaskMutation.mutate({
+      data: {
+        ...form,
+        date: selectedDate,
+      }
+    });
   };
 
-  const toggleTask = (id: string) => {
-    updateTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  const handleToggleTask = (task: any) => {
+    updateTaskMutation.mutate({
+      id: task.id,
+      data: {
+        completed: !task.completed,
+      }
+    });
   };
 
-  const deleteTask = (id: string) => {
-    updateTasks(tasks.filter(t => t.id !== id));
+  const handleDeleteTask = (id: number) => {
+    deleteTaskMutation.mutate({ id });
   };
 
   // Weekly overview
   const weeklyStats = weekDates.map(({ date, label, dayName }) => {
-    const dayT = tasks.filter(t => t.date === date);
+    const dayT = dbTasks.filter((t: any) => t.date === date);
     return {
       date, label, dayName,
       total: dayT.length,
-      completed: dayT.filter(t => t.completed).length,
+      completed: dayT.filter((t: any) => t.completed).length,
       isToday: date === todayISO,
       isSelected: date === selectedDate,
     };
   });
 
-  const overallCompleted = tasks.filter(t => t.completed).length;
-  const overallTotal = tasks.length;
+  const overallCompleted = dbTasks.filter((t: any) => t.completed).length;
+  const overallTotal = dbTasks.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <CalendarDays className="h-8 w-8 text-primary" />
+            <CalendarDays className="h-8 w-8 text-indigo-500" />
             Study Planner
           </h1>
-          <p className="text-muted-foreground mt-1">Plan and track your daily study sessions</p>
+          <p className="text-muted-foreground mt-1">Plan and track your daily study sessions. Everything saved in database.</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="gap-2">
+        <Button onClick={() => setShowAdd(true)} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md">
           <Plus className="h-4 w-4" />
           Add Task
         </Button>
@@ -162,30 +178,30 @@ export default function StudyPlanner() {
 
       {/* Overall Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-2"><Target className="h-4 w-4 text-blue-500" /><span className="text-xs text-muted-foreground">This Week</span></div>
+            <div className="flex items-center gap-2 mb-2"><Target className="h-4 w-4 text-indigo-500" /><span className="text-xs text-muted-foreground font-semibold">This Week</span></div>
             <p className="text-2xl font-bold">{weeklyStats.reduce((s,d)=>s+d.total,0)}</p>
             <p className="text-xs text-muted-foreground">tasks planned</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-2"><CheckCircle2 className="h-4 w-4 text-green-500" /><span className="text-xs text-muted-foreground">Completed</span></div>
+            <div className="flex items-center gap-2 mb-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /><span className="text-xs text-muted-foreground font-semibold">Completed</span></div>
             <p className="text-2xl font-bold">{overallCompleted}</p>
             <p className="text-xs text-muted-foreground">of {overallTotal} tasks</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-2"><Clock className="h-4 w-4 text-orange-500" /><span className="text-xs text-muted-foreground">Today</span></div>
+            <div className="flex items-center gap-2 mb-2"><Clock className="h-4 w-4 text-orange-500" /><span className="text-xs text-muted-foreground font-semibold">Today</span></div>
             <p className="text-2xl font-bold">{completedMinutesToday}m</p>
             <p className="text-xs text-muted-foreground">of {totalMinutesToday}m planned</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm">
           <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-2"><Trophy className="h-4 w-4 text-yellow-500" /><span className="text-xs text-muted-foreground">Completion</span></div>
+            <div className="flex items-center gap-2 mb-2"><Trophy className="h-4 w-4 text-yellow-500" /><span className="text-xs text-muted-foreground font-semibold">Completion</span></div>
             <p className="text-2xl font-bold">{overallTotal > 0 ? Math.round((overallCompleted / overallTotal) * 100) : 0}%</p>
             <p className="text-xs text-muted-foreground">overall rate</p>
           </CardContent>
@@ -193,32 +209,32 @@ export default function StudyPlanner() {
       </div>
 
       {/* Week Calendar */}
-      <Card>
+      <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm">
         <CardContent className="pt-4">
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-2">
             {weeklyStats.map(({ date, label, dayName, total, completed, isToday, isSelected }) => (
               <button
                 key={date}
                 onClick={() => setSelectedDate(date)}
-                className={`flex flex-col items-center p-2 rounded-lg transition-colors text-center ${
-                  isSelected
-                    ? 'bg-primary text-primary-foreground'
+                className={`p-3 rounded-2xl flex flex-col items-center justify-between border transition-all ${
+                  isSelected 
+                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
                     : isToday
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted'
+                      ? 'border-indigo-200 bg-indigo-50/30 text-indigo-950 dark:border-indigo-900/30 dark:bg-indigo-950/20'
+                      : 'border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-900/50'
                 }`}
               >
-                <span className="text-xs font-medium">{dayName}</span>
-                <span className="text-sm font-bold mt-0.5">{label.split(' ')[1]}</span>
-                {total > 0 && (
-                  <div className={`text-xs mt-1 ${isSelected ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                <span className="text-[10px] uppercase font-bold tracking-wider opacity-80">{dayName}</span>
+                <span className="text-sm font-extrabold my-1">{label.split(' ')[1]}</span>
+                
+                {total > 0 ? (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                    isSelected ? 'bg-indigo-700 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
                     {completed}/{total}
-                  </div>
-                )}
-                {total > 0 && (
-                  <div className={`w-4 h-1 rounded-full mt-1 ${
-                    completed === total ? 'bg-green-500' : isSelected ? 'bg-primary-foreground/30' : 'bg-muted-foreground/30'
-                  }`} />
+                  </span>
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-200 dark:bg-slate-800" />
                 )}
               </button>
             ))}
@@ -226,113 +242,175 @@ export default function StudyPlanner() {
         </CardContent>
       </Card>
 
-      {/* Day Tasks */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
-            {selectedDate === todayISO ? "Today's Tasks" : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </h2>
-          {dayTasks.length > 0 && (
-            <div className="flex items-center gap-3">
-              <Progress value={dayTasks.length > 0 ? (completedToday / dayTasks.length) * 100 : 0} className="w-24 h-2" />
-              <span className="text-sm text-muted-foreground">{completedToday}/{dayTasks.length}</span>
-            </div>
-          )}
-        </div>
-
-        {dayTasks.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground">No tasks planned for this day.</p>
-              <Button variant="outline" className="mt-4 gap-2" onClick={() => setShowAdd(true)}>
-                <Plus className="h-4 w-4" /> Add a Study Task
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {dayTasks.map(task => (
-              <Card key={task.id} className={`transition-opacity ${task.completed ? 'opacity-60' : ''}`}>
-                <CardContent className="py-3 px-4">
-                  <div className="flex items-start gap-3">
-                    <button onClick={() => toggleTask(task.id)} className="mt-0.5 flex-shrink-0">
-                      {task.completed
-                        ? <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        : <Circle className="h-5 w-5 text-muted-foreground" />
-                      }
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className={`font-medium ${task.completed ? 'line-through text-muted-foreground' : ''}`}>
-                          {task.title}
-                        </p>
-                        <Badge variant="outline" className={`text-xs ${PRIORITY_COLORS[task.priority]}`}>
-                          {task.priority}
-                        </Badge>
-                        <Badge variant="secondary" className={`text-xs ${CATEGORY_COLORS[task.category]}`}>
-                          {task.category}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />{task.durationMinutes}m
-                        </span>
-                      </div>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground mt-0.5">{task.description}</p>
-                      )}
-                    </div>
-                    <button onClick={() => deleteTask(task.id)} className="text-muted-foreground hover:text-destructive flex-shrink-0">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Active Study Plan (From Adaptive Learning Engine) */}
+        <Card className="border-indigo-100/50 dark:border-indigo-950/30 shadow-sm bg-gradient-to-br from-indigo-50/20 to-transparent dark:from-indigo-950/5">
+          <CardHeader>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Target className="h-5 w-5 text-indigo-500" />
+              Adaptive Study Plan
+            </CardTitle>
+            <CardDescription className="text-xs">Auto-generated recommendations by the AI engine</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-2">
+            {studyPlan && studyPlan.tasks && (studyPlan.tasks as any[]).length > 0 ? (
+              (studyPlan.tasks as any[]).map((task: any, idx: number) => (
+                <div key={idx} className="p-3 bg-card border border-indigo-100/50 dark:border-indigo-950/40 rounded-xl">
+                  <div className="flex justify-between items-start gap-2 mb-1.5">
+                    <Badge className="bg-indigo-500 hover:bg-indigo-600 text-white text-[9px] uppercase tracking-wider font-semibold rounded-lg">
+                      {task.type}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground flex items-center font-bold"><Clock className="h-3.5 w-3.5 mr-1" /> {task.estimatedTimeMinutes}m</span>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                  <h4 className="text-xs font-bold leading-tight">{task.entityName || "Adaptive Session"}</h4>
+                  <p className="text-[10px] text-muted-foreground mt-1 font-medium">Target accuracy: {task.targetAccuracy}%</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center p-6 text-muted-foreground">
+                <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-xs">No adaptive tasks found for today. Complete diagnostic mock tests to trigger recommendations.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tasks List */}
+        <Card className="md:col-span-2 border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold">Planned Tasks for {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</CardTitle>
+            <CardDescription className="text-xs">Check off tasks once completed to claim XP rewards</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 pt-2 space-y-3">
+            {tasksLoading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-16 bg-muted/40 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            ) : dayTasks.length > 0 ? (
+              <div className="grid gap-3">
+                {dayTasks.map((task: any) => (
+                  <div
+                    key={task.id}
+                    className={`flex items-start justify-between p-4 rounded-xl border transition-all duration-300 ${
+                      task.completed
+                        ? 'bg-slate-50 dark:bg-slate-900/30 border-slate-200/40 text-slate-400 line-through dark:text-slate-500'
+                        : 'bg-card border-slate-200/60 dark:border-slate-800 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <button
+                        onClick={() => handleToggleTask(task)}
+                        className="mt-0.5 text-muted-foreground hover:text-indigo-600 transition-colors"
+                      >
+                        {task.completed ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500 fill-emerald-50" />
+                        ) : (
+                          <Circle className="h-5 w-5" />
+                        )}
+                      </button>
+                      <div>
+                        <h4 className="font-bold text-xs leading-none text-foreground">{task.title}</h4>
+                        {task.description && (
+                          <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">{task.description}</p>
+                        )}
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-lg ${CATEGORY_COLORS[task.category as Category]}`}>
+                            {task.category}
+                          </span>
+                          <span className={`text-[8px] font-bold border px-1.5 py-0.5 rounded-lg uppercase tracking-wider ${PRIORITY_COLORS[task.priority as Priority]}`}>
+                            {task.priority}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground flex items-center font-bold">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {task.durationMinutes} mins
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="h-8 w-8 text-slate-400 hover:text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/20"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-16 text-center">
+                <BookOpen className="h-12 w-12 mb-4 opacity-25" />
+                <p className="text-sm font-semibold">No study tasks planned</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Add Quantitative practice, English reading, or Mock test reminders.</p>
+                <Button onClick={() => setShowAdd(true)} variant="outline" className="mt-4 h-8 text-xs font-bold rounded-lg">
+                  Add First Task
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Add Task Dialog */}
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-[425px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Add Study Task</DialogTitle>
+            <DialogTitle className="text-base font-bold">Add Study Task</DialogTitle>
+            <CardDescription className="text-xs">Create a manual reminder or study task for this day.</CardDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">Title *</label>
+          <div className="space-y-4 py-4">
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-muted-foreground">Task Title</span>
               <Input
-                placeholder="e.g. Practice Quantitative Aptitude"
+                placeholder="e.g. Practice Algebra PYQs"
                 value={form.title}
-                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                onChange={e => setForm({ ...form, title: e.target.value })}
+                className="rounded-xl h-10"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Description</label>
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-muted-foreground">Description</span>
               <Textarea
-                placeholder="What will you study?"
-                rows={2}
+                placeholder="Details or specific notes..."
                 value={form.description}
-                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                className="rounded-xl"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Category</label>
-                <Select value={form.category} onValueChange={(v) => setForm(f => ({ ...f, category: v as Category }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(['Quantitative','Reasoning','English','General Awareness','Computer','Custom'] as Category[]).map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground">Subject/Category</span>
+                <Select
+                  value={form.category}
+                  onValueChange={v => setForm({ ...form, category: v as Category })}
+                >
+                  <SelectTrigger className="rounded-xl h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="Quantitative">Quantitative</SelectItem>
+                    <SelectItem value="Reasoning">Reasoning</SelectItem>
+                    <SelectItem value="English">English</SelectItem>
+                    <SelectItem value="General Awareness">General Awareness</SelectItem>
+                    <SelectItem value="Computer">Computer</SelectItem>
+                    <SelectItem value="Custom">Custom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Priority</label>
-                <Select value={form.priority} onValueChange={(v) => setForm(f => ({ ...f, priority: v as Priority }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-muted-foreground">Priority</span>
+                <Select
+                  value={form.priority}
+                  onValueChange={v => setForm({ ...form, priority: v as Priority })}
+                >
+                  <SelectTrigger className="rounded-xl h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="low">Low</SelectItem>
@@ -340,21 +418,23 @@ export default function StudyPlanner() {
                 </Select>
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Duration (minutes)</label>
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-muted-foreground">Duration (Minutes)</span>
               <Input
                 type="number"
-                min={5}
-                max={480}
-                step={5}
                 value={form.durationMinutes}
-                onChange={e => setForm(f => ({ ...f, durationMinutes: parseInt(e.target.value) || 60 }))}
+                onChange={e => setForm({ ...form, durationMinutes: Number(e.target.value) })}
+                className="rounded-xl h-10"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button onClick={addTask}>Add Task</Button>
+            <Button variant="outline" onClick={() => setShowAdd(false)} className="rounded-xl h-10 text-xs font-bold">
+              Cancel
+            </Button>
+            <Button onClick={handleAddTask} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-10 text-xs font-bold shadow-md">
+              Save Task
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

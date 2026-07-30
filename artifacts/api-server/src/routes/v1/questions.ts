@@ -5,9 +5,10 @@ import {
   questionOptionsTable,
   subjectsTable,
   topicsTable,
+  questionReportsTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { requireAdmin } from "../../middlewares/auth";
+import { requireAdmin, requireAuth, type AuthRequest } from "../../middlewares/auth";
 import { createNotificationForStudents, createNotificationForAdmins } from "../../lib/notifications";
 import {
   ListQuestionsQueryParams,
@@ -271,6 +272,29 @@ router.post("/v1/questions/import/parse", requireAdmin, async (req, res): Promis
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Error parsing document";
     res.status(500).json({ error: msg });
+  }
+});
+
+router.post("/v1/questions/:id/report", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  try {
+    const questionId = Number(req.params.id);
+    const userId = req.userId!;
+    const { reason } = req.body;
+
+    if (!reason || typeof reason !== "string") {
+      res.status(400).json({ error: "Reason is required." });
+      return;
+    }
+
+    await db.insert(questionReportsTable).values({
+      questionId,
+      userId,
+      reason,
+    });
+
+    res.status(201).json({ success: true, message: "Report submitted successfully." });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || "Failed to submit question report." });
   }
 });
 

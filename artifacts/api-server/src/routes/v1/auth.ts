@@ -90,7 +90,14 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
       return;
     }
     const token = signToken({ userId: user.id, role: user.role });
-    res.cookie("token", token, getCookieOptions(req));
+    const cookieOpts = getCookieOptions(req);
+    console.log("=== login CALLED ===");
+    console.log("JWT generated:", token);
+    console.log("Cookie name: token");
+    console.log("Cookie options:", JSON.stringify(cookieOpts));
+    res.cookie("token", token, cookieOpts);
+    console.log("Response headers after setting cookie:", JSON.stringify(res.getHeaders()));
+    
     res.json({
       token,
       user: {
@@ -120,7 +127,7 @@ router.post("/v1/auth/logout", (req, res): void => {
 });
 
 router.get("/v1/auth/me", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.userId!));
+  const user = req.user;
   if (!user) {
     res.status(401).json({ error: "User not found" });
     return;

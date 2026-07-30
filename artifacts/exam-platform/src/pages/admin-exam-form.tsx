@@ -6,6 +6,8 @@ import {
   useUpdateExam,
   useListExamCategories,
   useListSubjects,
+  useListCollections,
+  useListTopics,
   getListExamsQueryKey,
   customFetch,
 } from '@workspace/api-client-react';
@@ -18,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Save, Loader2, Eye, Archive, Calendar, Clock, Plus, Trash, Search, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Eye, Archive, Calendar, Clock, Plus, Trash, Search, Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link } from 'wouter';
@@ -108,6 +110,39 @@ export default function AdminExamForm() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<ExamForm>(defaultForm());
 
+  const [questionSource, setQuestionSource] = useState<'manual' | 'collections'>('manual');
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewSearch, setPreviewSearch] = useState('');
+
+  // Collection picker filter states
+  const [collSearch, setCollSearch] = useState('');
+  const [collSubject, setCollSubject] = useState('');
+  const [collTopic, setCollTopic] = useState('');
+  const [collType, setCollType] = useState('');
+  const [collStatus, setCollStatus] = useState('');
+  const [collSort, setCollSort] = useState('newest');
+  const [collPage, setCollPage] = useState(1);
+  const [topicsForPicker, setTopicsForPicker] = useState<any[]>([]);
+
+  // Staged questions state for custom modifications
+  const [stagedQuestions, setStagedQuestions] = useState<any[]>([]);
+  const [removedQuestionIds, setRemovedQuestionIds] = useState<Set<number>>(new Set());
+  const [addedQuestions, setAddedQuestions] = useState<any[]>([]);
+
+  // Fetch collections
+  const { data: collectionsResp, isLoading: collectionsLoading } = useListCollections({
+    page: collPage,
+    limit: 5,
+    search: collSearch || undefined,
+    subjectId: collSubject ? parseInt(collSubject) : undefined,
+    topicId: collTopic ? parseInt(collTopic) : undefined,
+    collectionType: collType || undefined,
+    status: collStatus || undefined,
+    sortBy: collSort || undefined,
+  });
+
   const [selectedQuestions, setSelectedQuestions] = useState<{ id?: number; examId: number; sectionId: number | null; questionId: number; order: number }[]>([]);
   
   // Question Selector states
@@ -125,6 +160,69 @@ export default function AdminExamForm() {
   const [topicsForSection, setTopicsForSection] = useState<any[]>([]);
   const [isSavingQuestions, setIsSavingQuestions] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  // Fetch linked collections when editing
+  useEffect(() => {
+    if (isEdit && examId) {
+      customFetch(`/api/v1/exams/${examId}/collections`)
+        .then((res: any) => {
+          if (Array.isArray(res) && res.length > 0) {
+            setQuestionSource('collections');
+            setSelectedCollectionIds(res.map((c: any) => c.id));
+          }
+        })
+        .catch(err => console.error("Failed to load exam collections", err));
+    }
+  }, [isEdit, examId]);
+
+  // Load preview-collections when selectedCollectionIds changes
+  useEffect(() => {
+    if (questionSource === 'collections' && selectedCollectionIds.length > 0) {
+      setPreviewLoading(true);
+      customFetch(`/api/v1/exams/preview-collections`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collectionIds: selectedCollectionIds }),
+      })
+        .then((res: any) => {
+          setPreviewData(res);
+        })
+        .catch(err => console.error("Failed to preview collections", err))
+        .finally(() => setPreviewLoading(false));
+    } else {
+      setPreviewData(null);
+    }
+  }, [questionSource, selectedCollectionIds]);
+
+  // Sync staged questions when previewData, addedQuestions, or removedQuestionIds changes
+  useEffect(() => {
+    if (previewData) {
+      const baseQs = previewData.questions || [];
+      const filteredBase = baseQs.filter((q: any) => !removedQuestionIds.has(q.id));
+      
+      const seenIds = new Set(filteredBase.map((q: any) => q.id));
+      const filteredAdded = addedQuestions.filter((q: any) => !seenIds.has(q.id) && !removedQuestionIds.has(q.id));
+      
+      setStagedQuestions([...filteredBase, ...filteredAdded]);
+    } else {
+      setStagedQuestions(addedQuestions.filter((q: any) => !removedQuestionIds.has(q.id)));
+    }
+  }, [previewData, addedQuestions, removedQuestionIds]);
+
+  // Fetch topics for picker
+  useEffect(() => {
+    if (collSubject) {
+      customFetch(`/api/v1/topics?subjectId=${collSubject}`)
+        .then((res: any) => {
+          if (Array.isArray(res)) {
+            setTopicsForPicker(res);
+          }
+        })
+        .catch(err => console.error(err));
+    } else {
+      setTopicsForPicker([]);
+      setCollTopic('');
+    }
+  }, [collSubject]);
 
   // Fetch selected questions when editing
   useEffect(() => {
@@ -141,24 +239,33 @@ export default function AdminExamForm() {
 
   // Fetch topics when selector opens
   useEffect(() => {
-    if (selectorOpen && selectorSection?.subjectId) {
-      customFetch(`/api/v1/topics?subjectId=${selectorSection.subjectId}`)
-        .then((res: any) => {
-          if (Array.isArray(res)) {
-            setTopicsForSection(res);
-          }
-        })
-        .catch(err => console.error(err));
+    if (selectorOpen && selectorSection) {
+      const targetSubjectId = selectorSection.id === -1 ? collSubject : selectorSection.subjectId;
+      if (targetSubjectId) {
+        customFetch(`/api/v1/topics?subjectId=${targetSubjectId}`)
+          .then((res: any) => {
+            if (Array.isArray(res)) {
+              setTopicsForSection(res);
+            }
+          })
+          .catch(err => console.error(err));
+      } else {
+        setTopicsForSection([]);
+      }
     }
-  }, [selectorOpen, selectorSection]);
+  }, [selectorOpen, selectorSection, collSubject]);
 
   // Sync selection to local state when opening
   useEffect(() => {
     if (selectorOpen && selectorSection) {
-      const sectionQIds = selectedQuestions
-        .filter(sq => sq.sectionId === selectorSection.id)
-        .map(sq => sq.questionId);
-      setLocalSelectedIds(sectionQIds);
+      if (selectorSection.id === -1) {
+        setLocalSelectedIds(addedQuestions.map(q => q.id));
+      } else {
+        const sectionQIds = selectedQuestions
+          .filter(sq => sq.sectionId === selectorSection.id)
+          .map(sq => sq.questionId);
+        setLocalSelectedIds(sectionQIds);
+      }
       setSelectorTopicId('');
       setSelectorSearch('');
       setSearchTerm('');
@@ -168,7 +275,7 @@ export default function AdminExamForm() {
       setAvailableQuestions([]);
       setAvailableTotal(0);
     }
-  }, [selectorOpen, selectorSection, selectedQuestions]);
+  }, [selectorOpen, selectorSection, selectedQuestions, addedQuestions]);
 
   // Debounce search term
   useEffect(() => {
@@ -181,14 +288,14 @@ export default function AdminExamForm() {
 
   // Load available questions when filters change
   useEffect(() => {
-    if (selectorOpen && selectorSection && selectorSection.subjectId) {
+    if (selectorOpen && selectorSection) {
       setAvailableLoading(true);
       const queryParams = new URLSearchParams({
         page: String(selectorPage),
         limit: '15',
-        subjectId: String(selectorSection.subjectId),
         status: 'active',
         isPublished: 'true',
+        ...((selectorSection.id !== -1 && selectorSection.subjectId) && { subjectId: String(selectorSection.subjectId) }),
         ...(selectorTopicId && { topicId: selectorTopicId }),
         ...(selectorSearch && { search: selectorSearch }),
         ...(selectorDifficulty && { difficulty: selectorDifficulty }),
@@ -220,7 +327,30 @@ export default function AdminExamForm() {
   };
 
   const handleSaveQuestions = async () => {
-    if (!examId || !selectorSection) return;
+    if (!selectorSection) return;
+
+    if (selectorSection.id === -1) {
+      const selectedQuestionsDetails = availableQuestions.filter(q => localSelectedIds.includes(q.id));
+      setAddedQuestions(prev => {
+        const merged = [...prev, ...selectedQuestionsDetails];
+        const seen = new Set();
+        return merged.filter(q => {
+          if (seen.has(q.id)) return false;
+          seen.add(q.id);
+          return true;
+        });
+      });
+      setRemovedQuestionIds(prev => {
+        const copy = new Set(prev);
+        localSelectedIds.forEach(id => copy.delete(id));
+        return copy;
+      });
+      toast({ title: 'Staged questions added successfully' });
+      setSelectorOpen(false);
+      return;
+    }
+
+    if (!examId) return;
     setIsSavingQuestions(true);
     try {
       const otherSectionsQuestions = selectedQuestions.filter(sq => sq.sectionId !== selectorSection.id);
@@ -309,9 +439,53 @@ export default function AdminExamForm() {
     }
   }, [existingExam, isEdit]);
 
+  const mapQuestionToSectionId = (q: any, dbSections: any[]) => {
+    if (!dbSections || dbSections.length === 0) return null;
+    // Match by subjectId
+    const matchBySubject = dbSections.find(s => s.subjectId && Number(s.subjectId) === Number(q.subjectId));
+    if (matchBySubject) return matchBySubject.id;
+    // Match by exact name (case-insensitive)
+    const matchByName = dbSections.find(s => s.name.toLowerCase() === q.subjectName?.toLowerCase());
+    if (matchByName) return matchByName.id;
+    // Fallback to first section if only one section exists
+    if (dbSections.length === 1) return dbSections[0].id;
+    return null;
+  };
+
+  const validateExam = () => {
+    if (questionSource === 'collections') {
+      if (selectedCollectionIds.length === 0) {
+        toast({ title: 'Validation Error', description: 'Please select at least one question collection.', variant: 'destructive' });
+        return false;
+      }
+      if (stagedQuestions.length === 0) {
+        toast({ title: 'Validation Error', description: 'Staged questions list is empty.', variant: 'destructive' });
+        return false;
+      }
+      
+      // Find if there are unmapped questions
+      const unmapped = stagedQuestions.filter(q => !mapQuestionToSectionId(q, form.sections));
+      if (unmapped.length > 0) {
+        const firstUnmapped = unmapped[0];
+        const subName = firstUnmapped.subjectName || `Subject #${firstUnmapped.subjectId}`;
+        toast({
+          title: 'Validation Error',
+          description: `Question "${firstUnmapped.text.slice(0, 30)}..." belongs to "${subName}", but no matching section was found in the exam. Please add a section for "${subName}".`,
+          variant: 'destructive'
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
   const handleSave = (statusOverride?: ExamStatus) => {
     if (!form.title.trim()) {
       toast({ title: 'Title is required', variant: 'destructive' });
+      return;
+    }
+
+    if (!validateExam()) {
       return;
     }
 
@@ -355,10 +529,42 @@ export default function AdminExamForm() {
       updateExam.mutate(
         { id: examId!, data: payload as any },
         {
-          onSuccess: () => {
-            toast({ title: 'Exam updated successfully' });
-            queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
-            navigate('/admin/exams');
+          onSuccess: (savedExam: any) => {
+            const dbSections = savedExam.sections || [];
+            if (questionSource === 'collections') {
+              const questionsPayload = stagedQuestions.map((q, idx) => ({
+                questionId: q.id,
+                sectionId: mapQuestionToSectionId(q, dbSections),
+                order: idx + 1
+              }));
+              customFetch(`/api/v1/exams/${examId}/collections`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  collectionIds: selectedCollectionIds,
+                  questions: questionsPayload
+                })
+              })
+              .then(() => {
+                toast({ title: 'Exam updated successfully' });
+                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+                navigate('/admin/exams');
+              })
+              .catch(err => toast({ title: 'Failed to save collections questions', description: String(err.message), variant: 'destructive' }));
+            } else {
+              // Unlink all collections
+              customFetch(`/api/v1/exams/${examId}/collections`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ collectionIds: [] })
+              })
+              .then(() => {
+                toast({ title: 'Exam updated successfully' });
+                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+                navigate('/admin/exams');
+              })
+              .catch(err => console.error(err));
+            }
           },
           onError: (err) => toast({ title: 'Update failed', description: String(err.message), variant: 'destructive' }),
         }
@@ -367,10 +573,34 @@ export default function AdminExamForm() {
       createExam.mutate(
         { data: payload as any },
         {
-          onSuccess: () => {
-            toast({ title: 'Exam created successfully' });
-            queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
-            navigate('/admin/exams');
+          onSuccess: (savedExam: any) => {
+            const newExamId = savedExam.id;
+            const dbSections = savedExam.sections || [];
+            if (questionSource === 'collections') {
+              const questionsPayload = stagedQuestions.map((q, idx) => ({
+                questionId: q.id,
+                sectionId: mapQuestionToSectionId(q, dbSections),
+                order: idx + 1
+              }));
+              customFetch(`/api/v1/exams/${newExamId}/collections`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  collectionIds: selectedCollectionIds,
+                  questions: questionsPayload
+                })
+              })
+              .then(() => {
+                toast({ title: 'Exam created successfully' });
+                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+                navigate('/admin/exams');
+              })
+              .catch(err => toast({ title: 'Failed to save collections questions', description: String(err.message), variant: 'destructive' }));
+            } else {
+              toast({ title: 'Exam created successfully' });
+              queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+              navigate('/admin/exams');
+            }
           },
           onError: (err) => toast({ title: 'Create failed', description: String(err.message), variant: 'destructive' }),
         }
@@ -446,6 +676,44 @@ export default function AdminExamForm() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Question Source</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4">
+            <label className={`flex-1 flex items-center gap-3 rounded-lg border-2 p-3 cursor-pointer hover:bg-accent/30 transition-all ${questionSource === 'manual' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+              <input
+                type="radio"
+                name="questionSource"
+                value="manual"
+                checked={questionSource === 'manual'}
+                onChange={() => setQuestionSource('manual')}
+                className="h-4 w-4 text-primary focus:ring-primary accent-primary"
+              />
+              <div>
+                <p className="font-medium text-sm">Manual Question Selection</p>
+                <p className="text-xs text-muted-foreground">Select questions manually for each section</p>
+              </div>
+            </label>
+            <label className={`flex-1 flex items-center gap-3 rounded-lg border-2 p-3 cursor-pointer hover:bg-accent/30 transition-all ${questionSource === 'collections' ? 'border-primary bg-primary/5' : 'border-muted'}`}>
+              <input
+                type="radio"
+                name="questionSource"
+                value="collections"
+                checked={questionSource === 'collections'}
+                onChange={() => setQuestionSource('collections')}
+                className="h-4 w-4 text-primary focus:ring-primary accent-primary"
+              />
+              <div>
+                <p className="font-medium text-sm">Question Collections</p>
+                <p className="text-xs text-muted-foreground">Import questions from collections automatically</p>
+              </div>
+            </label>
           </div>
         </CardContent>
       </Card>
@@ -717,18 +985,24 @@ export default function AdminExamForm() {
                         Auto-Move to Next
                       </label>
                       {isEdit && section.id && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectorSection(section);
-                            setSelectorOpen(true);
-                          }}
-                          className="mt-2 text-xs h-7 py-1 px-2 border-primary text-primary hover:bg-primary/5"
-                        >
-                          Select Questions ({selectedQuestions.filter(sq => sq.sectionId === section.id).length})
-                        </Button>
+                        questionSource === 'manual' ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectorSection(section);
+                              setSelectorOpen(true);
+                            }}
+                            className="mt-2 text-xs h-7 py-1 px-2 border-primary text-primary hover:bg-primary/5"
+                          >
+                            Select Questions ({selectedQuestions.filter(sq => sq.sectionId === section.id).length})
+                          </Button>
+                        ) : (
+                          <div className="mt-2 text-xs text-muted-foreground italic font-medium">
+                            Questions linked via Collections
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -738,6 +1012,288 @@ export default function AdminExamForm() {
           )}
         </CardContent>
       </Card>
+
+      {questionSource === 'collections' && (
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle>1. Select Question Collections</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Filters Row */}
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+              <div className="md:col-span-2 relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search collections..."
+                  value={collSearch}
+                  onChange={e => { setCollSearch(e.target.value); setCollPage(1); }}
+                  className="pl-8"
+                />
+              </div>
+              <Select value={collSubject || 'all'} onValueChange={v => { setCollSubject(v === 'all' ? '' : v); setCollPage(1); }}>
+                <SelectTrigger><SelectValue placeholder="Subject" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {(subjects ?? []).map((s: any) => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={collTopic || 'all'} onValueChange={v => { setCollTopic(v === 'all' ? '' : v); setCollPage(1); }} disabled={!collSubject}>
+                <SelectTrigger><SelectValue placeholder="Topic" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Topics</SelectItem>
+                  {topicsForPicker.map((t: any) => (
+                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={collType || 'all'} onValueChange={v => { setCollType(v === 'all' ? '' : v); setCollPage(1); }}>
+                <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="pyq">PYQs</SelectItem>
+                  <SelectItem value="practice">Practice Sets</SelectItem>
+                  <SelectItem value="quiz">Quizzes</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={collStatus || 'all'} onValueChange={v => { setCollStatus(v === 'all' ? '' : v); setCollPage(1); }}>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Collections List Table */}
+            <div className="border rounded-md overflow-hidden bg-card">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="w-12 text-center">Select</TableHead>
+                    <TableHead>Collection Name</TableHead>
+                    <TableHead className="w-32 text-right">Question Count</TableHead>
+                    <TableHead className="w-32">Last Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {collectionsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground mt-1 block">Loading collections...</span>
+                      </TableCell>
+                    </TableRow>
+                  ) : !collectionsResp?.data || collectionsResp.data.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center text-muted-foreground text-sm">
+                        No collections found matching the filters.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    collectionsResp.data.map((c: any) => {
+                      const isChecked = selectedCollectionIds.includes(c.id);
+                      return (
+                        <TableRow key={c.id} className="hover:bg-muted/5">
+                          <TableCell className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setSelectedCollectionIds(prev => [...prev, c.id]);
+                                } else {
+                                  setSelectedCollectionIds(prev => prev.filter(id => id !== c.id));
+                                }
+                              }}
+                              className="h-4 w-4 text-primary rounded border-gray-300 focus:ring-primary accent-primary"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <span className="font-semibold text-sm">{c.name}</span>
+                            {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-sm">
+                            {c.questionsCount} Questions
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {new Date(c.updatedAt || c.createdAt).toLocaleDateString()}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            
+            {/* Collection Picker Pagination */}
+            {collectionsResp && collectionsResp.total > 5 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Page {collPage} of {Math.ceil(collectionsResp.total / 5)}</span>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={collPage <= 1} onClick={() => setCollPage(p => p - 1)} className="h-8 w-8 p-0">
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={collPage >= Math.ceil(collectionsResp.total / 5)} onClick={() => setCollPage(p => p + 1)} className="h-8 w-8 p-0">
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {questionSource === 'collections' && selectedCollectionIds.length > 0 && (
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle>2. Preview & Merge Questions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {previewLoading ? (
+              <div className="h-48 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground ml-2">Merging collections & loading preview...</span>
+              </div>
+            ) : !previewData ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Could not load preview.</p>
+            ) : (
+              <>
+                {/* Preview Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-muted/40 p-4 rounded-lg text-center text-xs font-semibold">
+                  <div>
+                    <p className="text-muted-foreground">Imported Questions</p>
+                    <p className="text-xl font-bold text-foreground">
+                      {stagedQuestions.length + removedQuestionIds.size}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Duplicates Removed</p>
+                    <p className="text-xl font-bold text-amber-600">
+                      {previewData.duplicatesRemoved}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Manually Added/Removed</p>
+                    <p className="text-xl font-bold text-blue-600">
+                      +{addedQuestions.length} / -{removedQuestionIds.size}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Final Count</p>
+                    <p className="text-xl font-bold text-green-600">
+                      {stagedQuestions.length} Questions
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Difficulty (E / M / H)</p>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-1">
+                      {stagedQuestions.filter(q => q.difficulty === 'easy').length} / {stagedQuestions.filter(q => q.difficulty === 'medium').length} / {stagedQuestions.filter(q => q.difficulty === 'hard').length}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Staged Questions Toolbar */}
+                <div className="flex gap-2 items-center justify-between">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search staged questions..."
+                      value={previewSearch}
+                      onChange={e => setPreviewSearch(e.target.value)}
+                      className="pl-8"
+                    />
+                  </div>
+                  
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      // Open manual adder modal
+                      setSelectorSection({ id: -1, name: "Staged Additions", subjectId: subjects?.[0]?.id });
+                      setSelectorOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Add Additional Questions
+                  </Button>
+                </div>
+
+                {/* Staged Questions Table */}
+                <div className="border rounded-md overflow-hidden bg-card">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="w-12 text-center">No.</TableHead>
+                        <TableHead>Question Text</TableHead>
+                        <TableHead className="w-32">Subject</TableHead>
+                        <TableHead className="w-32">Difficulty</TableHead>
+                        <TableHead className="w-36">Mapped Section</TableHead>
+                        <TableHead className="w-20 text-center">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {stagedQuestions
+                        .filter(q => q.text.toLowerCase().includes(previewSearch.toLowerCase()))
+                        .map((q, index) => {
+                          const sectionId = mapQuestionToSectionId(q, form.sections);
+                          const sectionName = form.sections.find(s => s.id === sectionId)?.name;
+                          return (
+                            <TableRow key={q.id || index} className="hover:bg-muted/5">
+                              <TableCell className="text-center font-medium text-xs">{index + 1}</TableCell>
+                              <TableCell className="max-w-md">
+                                <div className="text-xs">
+                                  <p className="font-semibold line-clamp-2">{q.text}</p>
+                                  {q.options && q.options.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-muted-foreground">
+                                      {q.options.map((o: any, oidx: number) => (
+                                        <span key={oidx} className={o.isCorrect ? "font-bold text-green-600 dark:text-green-400" : ""}>
+                                          {String.fromCharCode(65 + oidx)}) {o.text.slice(0, 15)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{q.subjectName || "—"}</TableCell>
+                              <TableCell className="capitalize text-xs">
+                                <Badge variant={q.difficulty === 'easy' ? 'secondary' : q.difficulty === 'hard' ? 'destructive' : 'outline'} className="text-[9px]">
+                                  {q.difficulty}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-xs">
+                                {sectionName ? (
+                                  <Badge variant="outline" className="border-green-300 text-green-700 bg-green-50">{sectionName}</Badge>
+                                ) : (
+                                  <Badge variant="destructive" className="text-[9px]">Unmapped</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setRemovedQuestionIds(prev => new Set([...prev, q.id]));
+                                  }}
+                                  className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -848,7 +1404,7 @@ export default function AdminExamForm() {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {!selectorSection?.subjectId ? (
+            {!selectorSection?.subjectId && selectorSection?.id !== -1 ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
                 <p className="text-destructive text-sm font-semibold">
                   This section does not have a subject mapped. Please close this dialog, select a Subject for this section, and save the exam settings first.

@@ -5,6 +5,54 @@
  * SSC Exam Platform API
  * OpenAPI spec version: 1.0.0
  */
+export interface GamificationConfig {
+  id?: number;
+  dailyLoginXp: number;
+  solveQuestionXp: number;
+  readArticleXp: number;
+  completeMissionXp: number;
+  perfectAccuracyXp: number;
+}
+
+export interface UpdateGamificationConfigInput {
+  dailyLoginXp: number;
+  solveQuestionXp: number;
+  readArticleXp: number;
+  completeMissionXp: number;
+  perfectAccuracyXp: number;
+}
+
+export interface UpdateGoalsInput {
+  dailyQuestions: number;
+  weeklyQuestions: number;
+  monthlyQuestions: number;
+  dailyMinutes: number;
+  dailyHours: number;
+  practiceAccuracy: number;
+  targetExam: string;
+  targetScore: number;
+  targetAccuracy: number;
+}
+
+export interface CreateStudyTaskInput {
+  title: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+  durationMinutes?: number;
+  date: string;
+}
+
+export interface UpdateStudyTaskInput {
+  title?: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+  durationMinutes?: number;
+  completed?: boolean;
+  date?: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -852,6 +900,109 @@ export interface AdminStats {
   newUsersThisWeek: number;
 }
 
+export interface QuestionCollection {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  questionsCount: number;
+}
+
+export interface QuestionCollectionDetail {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+  questionsCount: number;
+  questions: Question[];
+}
+
+export interface QuestionCollectionInput {
+  name: string;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface QuestionCollectionUpdate {
+  name?: string;
+  /** @nullable */
+  description?: string | null;
+  isArchived?: boolean;
+}
+
+export interface QuestionCollectionListResponse {
+  data: QuestionCollection[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface CollectionItemsUpdateInput {
+  questionIds: number[];
+}
+
+export type RepositorySummaryRecentImportsItem = {
+  date: string;
+  subjectName: string;
+  topicName: string;
+  count: number;
+  subjectId: number;
+  topicId: number;
+};
+
+export type RepositorySummaryRecentlyUpdatedTopicsItem = {
+  id: number;
+  name: string;
+  subjectName: string;
+  subjectId: number;
+  questionCount: number;
+  lastUpdated: string;
+};
+
+export interface RepositorySummary {
+  totalSubjects: number;
+  totalTopics: number;
+  totalQuestions: number;
+  totalCollections: number;
+  recentCollections: QuestionCollection[];
+  recentQuestions: Question[];
+  recentImports: RepositorySummaryRecentImportsItem[];
+  recentlyUpdatedTopics: RepositorySummaryRecentlyUpdatedTopicsItem[];
+}
+
+export interface TopicSummary {
+  totalQuestions: number;
+  totalCollections: number;
+  publishedQuestions: number;
+  draftQuestions: number;
+  easyCount: number;
+  mediumCount: number;
+  hardCount: number;
+  recentQuestions: Question[];
+  recentUpdates: Question[];
+}
+
+export interface RepositorySearch {
+  subjects: Subject[];
+  topics: Topic[];
+  collections: QuestionCollection[];
+  questions: Question[];
+}
+
+export interface SaveExamCollectionsInput {
+  collectionIds: number[];
+}
+
+export interface PreviewCollectionsInput {
+  collectionIds: number[];
+}
+
 export type ListExamsParams = {
 /**
  * @nullable
@@ -892,11 +1043,90 @@ export const ListExamsStatus = {
   archived: 'archived',
 } as const;
 
+export type SaveExamCollections200 = {
+  success: boolean;
+  count: number;
+};
+
+export type RemoveExamCollection200 = {
+  success: boolean;
+};
+
+export type PreviewCollections200DifficultyDistribution = {
+  easy: number;
+  medium: number;
+  hard: number;
+};
+
+export type PreviewCollections200CollectionsItem = {
+  id: number;
+  name: string;
+};
+
+export type PreviewCollections200 = {
+  totalQuestions: number;
+  totalMarks: number;
+  duplicatesRemoved: number;
+  difficultyDistribution: PreviewCollections200DifficultyDistribution;
+  collections: PreviewCollections200CollectionsItem[];
+  questions: Question[];
+};
+
 export type ListTopicsParams = {
 /**
  * @nullable
  */
 subjectId?: number | null;
+};
+
+export type ListCollectionsParams = {
+page?: number;
+limit?: number;
+/**
+ * @nullable
+ */
+search?: string | null;
+/**
+ * @nullable
+ */
+isArchived?: boolean | null;
+/**
+ * @nullable
+ */
+subjectId?: number | null;
+/**
+ * @nullable
+ */
+topicId?: number | null;
+/**
+ * @nullable
+ */
+difficulty?: string | null;
+/**
+ * @nullable
+ */
+collectionType?: string | null;
+/**
+ * @nullable
+ */
+status?: string | null;
+/**
+ * @nullable
+ */
+sortBy?: string | null;
+/**
+ * @nullable
+ */
+questionCountRange?: string | null;
+};
+
+export type DeleteCollection200 = {
+  message?: string;
+};
+
+export type UpdateCollectionItems200 = {
+  message?: string;
+  count?: number;
 };
 
 export type ListQuestionsParams = {
@@ -954,7 +1184,19 @@ period?: GetLeaderboardPeriod;
 /**
  * @nullable
  */
+subjectId?: number | null;
+/**
+ * @nullable
+ */
 examId?: number | null;
+/**
+ * @nullable
+ */
+city?: string | null;
+/**
+ * @nullable
+ */
+college?: string | null;
 limit?: number;
 };
 
@@ -962,6 +1204,7 @@ export type GetLeaderboardPeriod = typeof GetLeaderboardPeriod[keyof typeof GetL
 
 
 export const GetLeaderboardPeriod = {
+  daily: 'daily',
   weekly: 'weekly',
   monthly: 'monthly',
   overall: 'overall',
@@ -1013,4 +1256,153 @@ export const ListUsersRole = {
   admin: 'admin',
   super_admin: 'super_admin',
 } as const;
+
+export type SearchRepositoryParams = {
+query: string;
+};
+
+export type GetGamificationProfile200BadgesItem = {
+  badgeType?: string;
+  earnedAt?: string;
+};
+
+export type GetGamificationProfile200 = {
+  xp?: number;
+  level?: number;
+  dailyStreak?: number;
+  weeklyStreak?: number;
+  monthlyStreak?: number;
+  /** @nullable */
+  lastActivityDate?: string | null;
+  loginClaimedToday?: boolean;
+  badges?: GetGamificationProfile200BadgesItem[];
+  config?: GamificationConfig;
+};
+
+export type ClaimLoginReward200 = {
+  success?: boolean;
+  xpEarned?: number;
+  newXp?: number;
+  newLevel?: number;
+  dailyStreak?: number;
+  weeklyStreak?: number;
+  monthlyStreak?: number;
+  leveledUp?: boolean;
+};
+
+export type UpdateGamificationConfig200 = {
+  success?: boolean;
+};
+
+export type GetDailyMissions200MissionsItem = {
+  id?: number;
+  userId?: number;
+  date?: string;
+  missionType?: string;
+  description?: string;
+  targetCount?: number;
+  currentCount?: number;
+  completed?: boolean;
+  xpReward?: number;
+};
+
+export type GetDailyMissions200 = {
+  missions?: GetDailyMissions200MissionsItem[];
+  xpGained?: number;
+  newXp?: number;
+  newLevel?: number;
+};
+
+export type GetGoals200Targets = {
+  dailyQuestions?: number;
+  weeklyQuestions?: number;
+  monthlyQuestions?: number;
+  dailyMinutes?: number;
+  dailyHours?: number;
+  practiceAccuracy?: number;
+  /** @nullable */
+  targetExam?: string | null;
+  /** @nullable */
+  targetScore?: number | null;
+  /** @nullable */
+  targetAccuracy?: number | null;
+};
+
+export type GetGoals200Progress = {
+  dailyQuestions?: number;
+  weeklyQuestions?: number;
+  monthlyQuestions?: number;
+  dailyHours?: number;
+};
+
+export type GetGoals200 = {
+  targets?: GetGoals200Targets;
+  progress?: GetGoals200Progress;
+};
+
+export type UpdateGoals200 = {
+  success?: boolean;
+};
+
+export type GetStudyTasks200Item = {
+  id?: number;
+  userId?: number;
+  title?: string;
+  /** @nullable */
+  description?: string | null;
+  category?: string;
+  priority?: string;
+  durationMinutes?: number;
+  completed?: boolean;
+  date?: string;
+};
+
+export type CreateStudyTask200 = {
+  id?: number;
+  title?: string;
+};
+
+export type UpdateStudyTask200 = {
+  success?: boolean;
+};
+
+export type DeleteStudyTask200 = {
+  success?: boolean;
+};
+
+export type GetTimelineAnalyticsParams = {
+range?: GetTimelineAnalyticsRange;
+};
+
+export type GetTimelineAnalyticsRange = typeof GetTimelineAnalyticsRange[keyof typeof GetTimelineAnalyticsRange];
+
+
+export const GetTimelineAnalyticsRange = {
+  '7days': '7days',
+  '30days': '30days',
+} as const;
+
+export type GetTimelineAnalytics200Item = {
+  date?: string;
+  accuracy?: number;
+  speed?: number;
+  attempts?: number;
+  hours?: number;
+  revision?: number;
+  currentAffairs?: number;
+  mockTests?: number;
+  adaptiveMastery?: number;
+};
+
+export type GetAiInsights200 = {
+  strengths?: string[];
+  weaknesses?: string[];
+  studySuggestions?: string[];
+  bestTimeToStudy?: string;
+  recommendedSubjects?: string[];
+  expectedExamReadiness?: string;
+  revisionAdvice?: string;
+  dailySummary?: string;
+  weeklySummary?: string;
+};
 

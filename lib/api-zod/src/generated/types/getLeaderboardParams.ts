@@ -12,6 +12,18 @@ period?: GetLeaderboardPeriod;
 /**
  * @nullable
  */
+subjectId?: number | null;
+/**
+ * @nullable
+ */
 examId?: number | null;
+/**
+ * @nullable
+ */
+city?: string | null;
+/**
+ * @nullable
+ */
+college?: string | null;
 limit?: number;
 };

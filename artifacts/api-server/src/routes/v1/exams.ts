@@ -8,8 +8,15 @@ import {
   testSessionsTable,
   resultsTable,
   notificationsTable,
+  examCollectionsTable,
+  questionCollectionsTable,
+  questionCollectionItemsTable,
+  questionsTable,
+  questionOptionsTable,
+  subjectsTable,
+  topicsTable,
 } from "@workspace/db";
-import { eq, count, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, count, desc, and, inArray, sql, asc } from "drizzle-orm";
 import { requireAdmin, type AuthRequest } from "../../middlewares/auth";
 import { verifyToken } from "../../middlewares/auth";
 import { usersTable } from "@workspace/db";
@@ -449,6 +456,349 @@ router.post("/v1/exams/:id/questions", requireAdmin, async (req, res): Promise<v
   });
 
   res.json({ success: true, count: questions.length });
+});
+
+// ─── Get Exam Collections ──────────────────────────────────────────────────
+router.get("/v1/exams/:id/collections", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid exam ID" });
+    return;
+  }
+
+  const linked = await db
+    .select({
+      id: questionCollectionsTable.id,
+      name: questionCollectionsTable.name,
+      description: questionCollectionsTable.description,
+      isArchived: questionCollectionsTable.isArchived,
+      createdAt: questionCollectionsTable.createdAt,
+      updatedAt: questionCollectionsTable.updatedAt,
+    })
+    .from(examCollectionsTable)
+    .innerJoin(questionCollectionsTable, eq(examCollectionsTable.collectionId, questionCollectionsTable.id))
+    .where(eq(examCollectionsTable.examId, id));
+
+  res.json(linked);
+});
+
+// ─── Save Exam Collections & Sync Questions ─────────────────────────────────
+router.post("/v1/exams/:id/collections", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid exam ID" });
+    return;
+  }
+
+  const { collectionIds, questions } = req.body;
+  if (!Array.isArray(collectionIds)) {
+    res.status(400).json({ error: "collectionIds must be an array" });
+    return;
+  }
+
+  const valuesToInsert: { examId: number; sectionId: number | null; questionId: number; order: number }[] = [];
+
+  if (Array.isArray(questions)) {
+    // If customized questions are passed, use them directly
+    for (let idx = 0; idx < questions.length; idx++) {
+      const q = questions[idx];
+      valuesToInsert.push({
+        examId: id,
+        sectionId: q.sectionId ? parseInt(q.sectionId, 10) : null,
+        questionId: parseInt(q.questionId, 10),
+        order: q.order || (idx + 1),
+      });
+    }
+  } else {
+    // Retrieve all questions from the collections and auto-map
+    let mergedQuestionsRaw: any[] = [];
+    if (collectionIds.length > 0) {
+      const items = await db
+        .select({
+          question: questionsTable,
+          subjectName: subjectsTable.name,
+        })
+        .from(questionCollectionItemsTable)
+        .innerJoin(questionsTable, eq(questionCollectionItemsTable.questionId, questionsTable.id))
+        .leftJoin(subjectsTable, eq(questionsTable.subjectId, subjectsTable.id))
+        .where(inArray(questionCollectionItemsTable.collectionId, collectionIds))
+        .orderBy(asc(questionCollectionItemsTable.order));
+
+      // Deduplicate by questionId
+      const seenIds = new Set<number>();
+      for (const item of items) {
+        if (!seenIds.has(item.question.id)) {
+          seenIds.add(item.question.id);
+          mergedQuestionsRaw.push(item);
+        }
+      }
+    }
+
+    // Get current exam sections to map questions to them
+    const sections = await db.select().from(examSectionsTable).where(eq(examSectionsTable.examId, id));
+    
+    if (mergedQuestionsRaw.length > 0 && sections.length === 0) {
+      res.status(400).json({ error: "This exam does not have any sections configured. Please configure at least one section first." });
+      return;
+    }
+
+    const sectionBySubject = new Map<number, number>();
+    for (const s of sections) {
+      if (s.subjectId) {
+        sectionBySubject.set(s.subjectId, s.id);
+      }
+    }
+
+    // Fetch subjects to check their names in case of fallback
+    const subjects = await db.select().from(subjectsTable);
+    const subjectMap = new Map(subjects.map(s => [s.id, s]));
+
+    for (let idx = 0; idx < mergedQuestionsRaw.length; idx++) {
+      const q = mergedQuestionsRaw[idx].question;
+      let targetSectionId: number | null = null;
+
+      if (sectionBySubject.has(q.subjectId)) {
+        targetSectionId = sectionBySubject.get(q.subjectId)!;
+      } else if (sections.length === 1) {
+        targetSectionId = sections[0].id;
+      } else {
+        // Look for a section with a name matching the subject name
+        const sub = subjectMap.get(q.subjectId);
+        const matchingSec = sections.find(s => s.name.toLowerCase() === sub?.name.toLowerCase());
+        if (matchingSec) {
+          targetSectionId = matchingSec.id;
+        } else {
+          const subName = sub?.name || `Subject #${q.subjectId}`;
+          res.status(400).json({
+            error: `Question "${q.text.slice(0, 30)}..." belongs to "${subName}", but no matching section was found in the exam. Please add a section for "${subName}" first.`
+          });
+          return;
+        }
+      }
+
+      valuesToInsert.push({
+        examId: id,
+        sectionId: targetSectionId,
+        questionId: q.id,
+        order: idx + 1
+      });
+    }
+  }
+
+  // Update DB inside transaction
+  await db.transaction(async (tx) => {
+    // Delete existing associations
+    await tx.delete(examCollectionsTable).where(eq(examCollectionsTable.examId, id));
+    
+    // Insert new associations
+    if (collectionIds.length > 0) {
+      await tx.insert(examCollectionsTable).values(
+        collectionIds.map(cId => ({ examId: id, collectionId: cId }))
+      );
+    }
+
+    // Clear existing exam questions
+    await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.examId, id));
+
+    // Insert new questions
+    if (valuesToInsert.length > 0) {
+      await tx.insert(examQuestionsTable).values(valuesToInsert);
+    }
+  });
+
+  res.json({ success: true, count: valuesToInsert.length });
+});
+
+// ─── Unlink Collection from Exam ───────────────────────────────────────────
+router.delete("/v1/exams/:id/collections/:collectionId", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id as string, 10);
+  const collectionId = parseInt(req.params.collectionId as string, 10);
+  if (isNaN(id) || isNaN(collectionId)) {
+    res.status(400).json({ error: "Invalid ID parameters" });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    // Delete association
+    await tx
+      .delete(examCollectionsTable)
+      .where(and(eq(examCollectionsTable.examId, id), eq(examCollectionsTable.collectionId, collectionId)));
+      
+    // Re-sync exam questions based on remaining collections
+    const remaining = await tx
+      .select({ collectionId: examCollectionsTable.collectionId })
+      .from(examCollectionsTable)
+      .where(eq(examCollectionsTable.examId, id));
+      
+    const remainingIds = remaining.map(r => r.collectionId);
+    
+    // Clear exam questions
+    await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.examId, id));
+    
+    if (remainingIds.length > 0) {
+      const items = await tx
+        .select({
+          question: questionsTable,
+        })
+        .from(questionCollectionItemsTable)
+        .innerJoin(questionsTable, eq(questionCollectionItemsTable.questionId, questionsTable.id))
+        .where(inArray(questionCollectionItemsTable.collectionId, remainingIds))
+        .orderBy(asc(questionCollectionItemsTable.order));
+        
+      const seenIds = new Set<number>();
+      const mergedQuestionsRaw: typeof items = [];
+      for (const item of items) {
+        if (!seenIds.has(item.question.id)) {
+          seenIds.add(item.question.id);
+          mergedQuestionsRaw.push(item);
+        }
+      }
+      
+      const sections = await tx.select().from(examSectionsTable).where(eq(examSectionsTable.examId, id));
+      const sectionBySubject = new Map<number, number>();
+      for (const s of sections) {
+        if (s.subjectId) {
+          sectionBySubject.set(s.subjectId, s.id);
+        }
+      }
+      
+      const subjects = await tx.select().from(subjectsTable);
+      const subjectMap = new Map(subjects.map(s => [s.id, s]));
+      
+      const valuesToInsert: any[] = [];
+      for (let idx = 0; idx < mergedQuestionsRaw.length; idx++) {
+        const q = mergedQuestionsRaw[idx].question;
+        let targetSectionId: number | null = null;
+        
+        if (sectionBySubject.has(q.subjectId)) {
+          targetSectionId = sectionBySubject.get(q.subjectId)!;
+        } else if (sections.length === 1) {
+          targetSectionId = sections[0].id;
+        } else {
+          const sub = subjectMap.get(q.subjectId);
+          const matchingSec = sections.find(s => s.name.toLowerCase() === sub?.name.toLowerCase());
+          if (matchingSec) {
+            targetSectionId = matchingSec.id;
+          }
+        }
+        
+        if (targetSectionId !== null) {
+          valuesToInsert.push({
+            examId: id,
+            sectionId: targetSectionId,
+            questionId: q.id,
+            order: idx + 1
+          });
+        }
+      }
+      
+      if (valuesToInsert.length > 0) {
+        await tx.insert(examQuestionsTable).values(valuesToInsert);
+      }
+    }
+  });
+
+  res.json({ success: true });
+});
+
+// ─── Preview Merged Collections Questions ───────────────────────────────────
+router.post("/v1/exams/preview-collections", requireAdmin, async (req, res): Promise<void> => {
+  const { collectionIds } = req.body;
+  if (!Array.isArray(collectionIds) || collectionIds.length === 0) {
+    res.json({
+      totalQuestions: 0,
+      totalMarks: 0,
+      duplicatesRemoved: 0,
+      difficultyDistribution: { easy: 0, medium: 0, hard: 0 },
+      collections: [],
+      questions: [],
+    });
+    return;
+  }
+
+  // Get collections metadata
+  const collections = await db
+    .select({ id: questionCollectionsTable.id, name: questionCollectionsTable.name })
+    .from(questionCollectionsTable)
+    .where(inArray(questionCollectionsTable.id, collectionIds));
+
+  // Get items
+  const items = await db
+    .select({
+      question: questionsTable,
+      subjectName: subjectsTable.name,
+      topicName: topicsTable.name,
+    })
+    .from(questionCollectionItemsTable)
+    .innerJoin(questionsTable, eq(questionCollectionItemsTable.questionId, questionsTable.id))
+    .leftJoin(subjectsTable, eq(questionsTable.subjectId, subjectsTable.id))
+    .leftJoin(topicsTable, eq(questionsTable.topicId, topicsTable.id))
+    .where(inArray(questionCollectionItemsTable.collectionId, collectionIds))
+    .orderBy(asc(questionCollectionItemsTable.order));
+
+  // Deduplicate questions by question.id
+  const seenIds = new Set<number>();
+  const mergedQuestionsRaw: typeof items = [];
+  let duplicatesRemoved = 0;
+
+  for (const item of items) {
+    if (seenIds.has(item.question.id)) {
+      duplicatesRemoved++;
+    } else {
+      seenIds.add(item.question.id);
+      mergedQuestionsRaw.push(item);
+    }
+  }
+
+  const questionIds = mergedQuestionsRaw.map(i => i.question.id);
+  const allOptions = questionIds.length > 0
+    ? await db.select().from(questionOptionsTable).where(inArray(questionOptionsTable.questionId, questionIds))
+    : [];
+
+  let totalMarks = 0;
+  const difficultyDistribution = { easy: 0, medium: 0, hard: 0 };
+
+  const questions = mergedQuestionsRaw.map((item, idx) => {
+    const q = item.question;
+    const options = allOptions
+      .filter(o => o.questionId === q.id)
+      .map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect }));
+
+    totalMarks += q.positiveMarks;
+    
+    const diff = q.difficulty as "easy" | "medium" | "hard";
+    if (difficultyDistribution[diff] !== undefined) {
+      difficultyDistribution[diff]++;
+    }
+
+    return {
+      id: q.id,
+      text: q.text,
+      type: q.type,
+      difficulty: q.difficulty,
+      explanation: q.explanation ?? null,
+      hint: q.hint ?? null,
+      imageUrl: q.imageUrl ?? null,
+      positiveMarks: q.positiveMarks,
+      negativeMarks: q.negativeMarks,
+      subjectId: q.subjectId,
+      topicId: q.topicId,
+      subjectName: item.subjectName ?? null,
+      topicName: item.topicName ?? null,
+      options,
+      order: idx + 1,
+      createdAt: q.createdAt,
+    };
+  });
+
+  res.json({
+    totalQuestions: questions.length,
+    totalMarks,
+    duplicatesRemoved,
+    difficultyDistribution,
+    collections,
+    questions,
+  });
 });
 
 export default router;

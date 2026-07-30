@@ -7,22 +7,37 @@ import {
   useGetRecentActivity,
   getGetRecentActivityQueryKey,
   useGetSubjectPerformance,
-  getGetSubjectPerformanceQueryKey
+  getGetSubjectPerformanceQueryKey,
+  useGetGamificationProfile,
+  getGetGamificationProfileQueryKey,
+  useClaimLoginReward,
+  useGetDailyMissions,
+  getGetDailyMissionsQueryKey,
+  useGetGoals,
+  getGetGoalsQueryKey,
+  useGetAiInsights,
+  getGetAiInsightsQueryKey
 } from '@workspace/api-client-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { Trophy, Target, Clock, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { Trophy, Target, Clock, CheckCircle2, AlertCircle, ArrowRight, Flame, Award, Zap, BookOpen, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Link } from 'wouter';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Standard stats & feeds
   const { data: stats, isLoading: statsLoading } = useGetDashboardStats({
     query: { queryKey: getGetDashboardStatsQueryKey() }
   });
@@ -36,140 +51,306 @@ export default function Dashboard() {
     query: { queryKey: getGetSubjectPerformanceQueryKey() }
   });
 
+  // Gamification & Success module hooks
+  const { data: profile, isLoading: profileLoading } = useGetGamificationProfile({
+    query: { queryKey: getGetGamificationProfileQueryKey() }
+  });
+  const { data: missionData, isLoading: missionsLoading } = useGetDailyMissions({
+    query: { queryKey: getGetDailyMissionsQueryKey() }
+  });
+  const { data: goalData, isLoading: goalsLoading } = useGetGoals({
+    query: { queryKey: getGetGoalsQueryKey() }
+  });
+  const { data: aiInsights, isLoading: aiLoading } = useGetAiInsights({
+    query: { queryKey: getGetAiInsightsQueryKey() }
+  });
+
+  // Claim Daily login reward mutation
+  const claimRewardMutation = useClaimLoginReward({
+    mutation: {
+      onSuccess: (data) => {
+        toast({
+          title: "Reward Claimed!",
+          description: `You earned +${data.xpEarned} XP! ${data.leveledUp ? "LEVEL UP!" : ""}`,
+        });
+        // Invalidate queries to reload stats
+        queryClient.invalidateQueries({ queryKey: getGetGamificationProfileQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDailyMissionsQueryKey() });
+      },
+      onError: (err: any) => {
+        toast({
+          title: "Claim Failed",
+          description: err.response?.data?.error || "Unable to claim reward. Try again later.",
+          variant: "destructive",
+        });
+      }
+    }
+  });
+
+  const handleClaimReward = () => {
+    claimRewardMutation.mutate();
+  };
+
+  const xpProgress = (profile && profile.xp !== undefined) ? (profile.xp % 500) : 0;
+  const xpPercent = Math.min((xpProgress / 500) * 100, 100);
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Welcome back!</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Here's your preparation summary.</p>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Next-Gen Success Hub</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Monitor your goals, claim rewards, and build your streaks.</p>
+        </div>
+        
+        {/* Daily reward claim widget */}
+        {profile && (
+          <div className="flex items-center gap-3 bg-card p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm">
+            <div className="text-right">
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Daily login reward</p>
+              <p className="text-xs text-foreground font-bold">Claim 20 XP bonus</p>
+            </div>
+            <Button 
+              size="sm" 
+              onClick={handleClaimReward} 
+              disabled={profile.loginClaimedToday || claimRewardMutation.isPending}
+              className={`font-bold text-xs h-9 rounded-xl ${
+                profile.loginClaimedToday 
+                  ? "bg-slate-100 dark:bg-slate-800 text-slate-400 border-0 cursor-default" 
+                  : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md hover:shadow"
+              }`}
+            >
+              {profile.loginClaimedToday ? "Claimed" : "Claim Reward"}
+            </Button>
+          </div>
+        )}
       </div>
 
-      {statsLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 rounded-2xl bg-muted/40 animate-pulse border border-slate-200/40" />
-          ))}
-        </div>
-      ) : stats ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-gradient-to-br from-primary via-indigo-600 to-indigo-700 text-primary-foreground shadow-lg border-0 transition-transform duration-300 hover:-translate-y-0.5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider opacity-90">All India Rank</CardTitle>
-              <Trophy className="h-4 w-4 opacity-75" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{stats.currentRank ? `#${stats.currentRank}` : 'N/A'}</div>
-              <p className="text-[10px] opacity-85 mt-1 font-medium">Keep practicing to improve!</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="transition-transform duration-300 hover:-translate-y-0.5 border border-slate-200/60 dark:border-slate-800">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tests Taken</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.totalTestsTaken}</div>
-              <p className="text-[10px] text-muted-foreground mt-1 font-medium">+{stats.testsThisWeek} this week</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="transition-transform duration-300 hover:-translate-y-0.5 border border-slate-200/60 dark:border-slate-800">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Overall Accuracy</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-foreground">{stats.overallAccuracy.toFixed(1)}%</div>
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 mt-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${stats.overallAccuracy}%` }} />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="transition-transform duration-300 hover:-translate-y-0.5 border border-slate-200/60 dark:border-slate-800">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Study Time</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-foreground">{Math.floor(stats.totalStudyTime / 60)}h {stats.totalStudyTime % 60}m</div>
-              <p className="text-[10px] text-muted-foreground mt-1 font-medium">Total time spent preparing</p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
-
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="lg:col-span-4 border border-slate-200/60 dark:border-slate-800">
-          <CardHeader>
-            <CardTitle className="text-base font-bold">Subject Performance</CardTitle>
-            <CardDescription className="text-xs">Your accuracy across different subjects</CardDescription>
+      {/* Grid Row 1: XP Progress, Streaks & Stats */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Gamification Stats */}
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm relative overflow-hidden bg-gradient-to-br from-card to-slate-50/50 dark:to-slate-900/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Award className="h-5 w-5 text-indigo-500" />
+              Level {profile?.level ?? 1} Progress
+            </CardTitle>
+            <CardDescription className="text-xs">Accumulate XP to unlock levels and badges</CardDescription>
           </CardHeader>
-          <CardContent>
-            {subjectLoading || !mounted ? (
-              <div className="h-[300px] flex items-center justify-center bg-slate-50 dark:bg-slate-900/40 rounded-xl animate-pulse" />
-            ) : subjectPerf && subjectPerf.length > 0 ? (
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={subjectPerf} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis dataKey="subjectName" axisLine={false} tickLine={false} fontSize={10} tickMargin={10} stroke="hsl(var(--muted-foreground))" />
-                    <YAxis axisLine={false} tickLine={false} fontSize={10} domain={[0, 100]} stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip 
-                      cursor={{ fill: 'hsl(var(--muted)/0.5)' }}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}
-                    />
-                    <Bar dataKey="accuracy" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Accuracy (%)" />
-                  </BarChart>
-                </ResponsiveContainer>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-muted-foreground">{profile?.xp ?? 0} Total XP</span>
+                <span className="text-indigo-600 dark:text-indigo-400">{500 - xpProgress} XP to Level {(profile?.level ?? 1) + 1}</span>
               </div>
-            ) : (
-              <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground">
-                <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
-                <p className="text-sm font-medium">Not enough data to generate chart.</p>
+              <Progress value={xpPercent} className="h-3 bg-slate-100 dark:bg-slate-800" />
+            </div>
+            
+            {/* Badges preview */}
+            <div className="pt-2">
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider mb-2">Unlocked Badges</p>
+              <div className="flex flex-wrap gap-2">
+                {profile?.badges && profile.badges.length > 0 ? (
+                  profile.badges.map((b, i) => (
+                    <Badge key={i} variant="secondary" className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border-indigo-100/50 dark:border-indigo-900/40 text-[10px] py-1 px-2 font-semibold">
+                      {b.badgeType?.replace('_', ' ')}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-xs text-muted-foreground">No badges earned yet. Solve daily quizzes to unlock!</span>
+                )}
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3 border border-slate-200/60 dark:border-slate-800">
-          <CardHeader>
-            <CardTitle className="text-base font-bold">Strengths & Weaknesses</CardTitle>
-            <CardDescription className="text-xs">Radar view of your capabilities</CardDescription>
+        {/* Streaks Tracker */}
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Flame className="h-5 w-5 text-orange-500" />
+              Study Streaks
+            </CardTitle>
+            <CardDescription className="text-xs">Prepare consistently to grow your streaks</CardDescription>
           </CardHeader>
-          <CardContent>
-            {subjectLoading || !mounted ? (
-              <div className="h-[300px] flex items-center justify-center bg-slate-50 dark:bg-slate-900/40 rounded-xl animate-pulse" />
-            ) : subjectPerf && subjectPerf.length > 2 ? (
-              <div className="h-[300px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={subjectPerf}>
-                    <PolarGrid stroke="hsl(var(--border))" />
-                    <PolarAngleAxis dataKey="subjectName" fontSize={9} tick={{ fill: 'hsl(var(--foreground))' }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={9} />
-                    <Radar name="Accuracy" dataKey="accuracy" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
-                  </RadarChart>
-                </ResponsiveContainer>
+          <CardContent className="grid grid-cols-3 gap-2 text-center pt-2">
+            <div className="bg-orange-50/50 dark:bg-orange-950/20 p-3 rounded-2xl border border-orange-100/30 dark:border-orange-900/20">
+              <Flame className={`h-6 w-6 mx-auto mb-1 ${profile?.dailyStreak ? "text-orange-500 fill-orange-500" : "text-slate-300"}`} />
+              <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{profile?.dailyStreak ?? 0}</p>
+              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Daily</p>
+            </div>
+            <div className="bg-amber-50/50 dark:bg-amber-950/20 p-3 rounded-2xl border border-amber-100/30 dark:border-amber-900/20">
+              <Flame className={`h-6 w-6 mx-auto mb-1 ${profile?.weeklyStreak ? "text-amber-500 fill-amber-500" : "text-slate-300"}`} />
+              <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{profile?.weeklyStreak ?? 0}</p>
+              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Weekly</p>
+            </div>
+            <div className="bg-rose-50/50 dark:bg-rose-950/20 p-3 rounded-2xl border border-rose-100/30 dark:border-rose-900/20">
+              <Flame className={`h-6 w-6 mx-auto mb-1 ${profile?.monthlyStreak ? "text-rose-500 fill-rose-500" : "text-slate-300"}`} />
+              <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{profile?.monthlyStreak ?? 0}</p>
+              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">Monthly</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Today's Goals Progress */}
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm bg-gradient-to-br from-indigo-500 via-indigo-600 to-indigo-700 text-white border-none shadow-md">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-bold flex items-center justify-between">
+              <span>Today's Goal</span>
+              <Target className="h-5 w-5 opacity-80" />
+            </CardTitle>
+            <CardDescription className="text-xs text-indigo-100">Your targets for today: {goalData?.targets?.targetExam || "SSC Exams"}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold text-indigo-100">
+                <span>Questions Solved</span>
+                <span>{goalData?.progress?.dailyQuestions ?? 0} / {goalData?.targets?.dailyQuestions ?? 20}</span>
               </div>
-            ) : (
-              <div className="h-[300px] flex flex-col items-center justify-center text-muted-foreground p-6 text-center">
-                <AlertCircle className="h-8 w-8 mb-2 opacity-50" />
-                <p className="text-xs font-semibold">Radar view unavailable</p>
-                <p className="text-[10px] text-muted-foreground mt-1">Take tests in at least 3 subjects to analyze strengths.</p>
+              <Progress 
+                value={goalData ? Math.min(((goalData?.progress?.dailyQuestions ?? 0) / (goalData?.targets?.dailyQuestions ?? 20)) * 100, 100) : 0} 
+                className="h-2 bg-indigo-800/80" 
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-semibold text-indigo-100">
+                <span>Study Hours</span>
+                <span>{goalData?.progress?.dailyHours ?? 0}h / {goalData?.targets?.dailyHours ?? 1}h</span>
               </div>
-            )}
+              <Progress 
+                value={goalData ? Math.min(((goalData?.progress?.dailyHours ?? 0) / (goalData?.targets?.dailyHours ?? 1)) * 100, 100) : 0} 
+                className="h-2 bg-indigo-800/80" 
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+        {/* Daily Missions checklist */}
+        <Card className="lg:col-span-2 border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500 fill-amber-500" />
+              Daily Missions
+            </CardTitle>
+            <CardDescription className="text-xs">Complete these tasks today to earn extra experience points</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 space-y-3 pt-2">
+            {missionsLoading ? (
+              <div className="space-y-3">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="h-12 bg-muted/40 animate-pulse rounded-xl border border-slate-200/40" />
+                ))}
+              </div>
+            ) : missionData?.missions && missionData.missions.length > 0 ? (
+              <div className="grid gap-3">
+                {missionData.missions.map((m: any) => (
+                  <div 
+                    key={m.id} 
+                    className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 ${
+                      m.completed 
+                        ? "bg-slate-50 dark:bg-slate-900/30 border-slate-200/40 text-slate-400 line-through dark:text-slate-500" 
+                        : "bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 border-slate-200/60 dark:border-slate-800"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`h-5 w-5 rounded-full flex items-center justify-center border transition-all ${
+                        m.completed 
+                          ? "bg-emerald-500 border-emerald-500 text-white" 
+                          : "border-slate-300 dark:border-slate-700 bg-background"
+                      }`}>
+                        {m.completed && <Check className="h-3 w-3 stroke-[3]" />}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold leading-none">{m.description}</span>
+                        <div className="text-[10px] text-muted-foreground mt-1">
+                          Progress: {m.currentCount} / {m.targetCount}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={`text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${
+                      m.completed 
+                        ? "bg-slate-100 text-slate-400 border-0" 
+                        : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/20 dark:text-amber-500 dark:border-amber-900/20"
+                    }`}>
+                      +{m.xpReward} XP
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-12">
+                <CheckCircle2 className="h-10 w-10 text-emerald-500 mb-2" />
+                <p className="text-xs font-bold">All missions complete for today!</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* AI study insights & Weak topics */}
+        <Card className="border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Zap className="h-5 w-5 text-indigo-500" />
+              AI Success Insights
+            </CardTitle>
+            <CardDescription className="text-xs">Personalized study advice generated based on performance</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 space-y-4 pt-2">
+            {aiLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-16 bg-muted/40 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            ) : aiInsights ? (
+              <div className="space-y-4">
+                {/* Expected readiness */}
+                <div className="bg-indigo-50 dark:bg-indigo-950/20 p-4 rounded-xl border border-indigo-100/30 dark:border-indigo-900/20">
+                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider">Exam Readiness</p>
+                  <p className="text-xl font-black mt-1 text-indigo-950 dark:text-indigo-100">{aiInsights?.expectedExamReadiness}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Based on accuracy in recent mocks.</p>
+                </div>
+
+                {/* Study suggestion list */}
+                <div className="space-y-2">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Recommended Next Steps</p>
+                  <ul className="space-y-2">
+                    {aiInsights?.studySuggestions?.map((suggestion: string, idx: number) => (
+                      <li key={idx} className="flex gap-2 text-xs text-slate-700 dark:text-slate-300">
+                        <span className="text-indigo-500 font-bold">•</span>
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Best time to study */}
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3 flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground font-semibold">Best Time To Study:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">{aiInsights?.bestTimeToStudy}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <AlertCircle className="h-6 w-6 mr-2 opacity-50" />
+                <span className="text-xs">Not enough performance logs to generate insights.</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Row 4: Recent Performance and Mock test lists */}
+      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-2 flex flex-col border border-slate-200/60 dark:border-slate-800">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base font-bold">Recent Activity</CardTitle>
-              <CardDescription className="text-xs">Your latest test attempts</CardDescription>
+              <CardTitle className="text-base font-bold">Recent Performance</CardTitle>
+              <CardDescription className="text-xs">Your latest mock test attempts</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild className="text-xs font-bold">
+            <Button variant="ghost" size="sm" asChild className="text-xs font-bold text-indigo-500 hover:text-indigo-600">
               <Link href="/results">View All <ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Link>
             </Button>
           </CardHeader>
@@ -186,13 +367,13 @@ export default function Dashboard() {
                   <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all duration-300">
                     <div>
                       <h4 className="font-bold text-xs leading-tight text-foreground">{item.examTitle}</h4>
-                      <p className="text-[10px] text-muted-foreground mt-1">
+                      <p className="text-[10px] text-muted-foreground mt-1 font-medium">
                         {new Date(item.attemptedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-xs text-primary">{item.score} / {item.totalMarks}</div>
-                      <div className="text-[10px] text-muted-foreground mt-0.5">{item.accuracy.toFixed(1)}% Acc.</div>
+                      <div className="font-bold text-xs text-indigo-600 dark:text-indigo-400">{item.score} / {item.totalMarks}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">{item.accuracy.toFixed(1)}% Accuracy</div>
                     </div>
                   </div>
                 ))}
@@ -209,16 +390,17 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="flex flex-col border border-slate-200/60 dark:border-slate-800">
+        {/* Mock recommendations */}
+        <Card className="flex flex-col border border-slate-200/60 dark:border-slate-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-base font-bold">Upcoming Scheduled Tests</CardTitle>
-            <CardDescription className="text-xs">Don't miss these live mocks</CardDescription>
+            <CardTitle className="text-base font-bold">Upcoming Recommended Tests</CardTitle>
+            <CardDescription className="text-xs">Based on target exam: {goalData?.targets?.targetExam || "SSC CGL"}</CardDescription>
           </CardHeader>
           <CardContent className="flex-1">
             {upcomingLoading ? (
                <div className="space-y-4">
                  {[...Array(3)].map((_, i) => (
-                   <div key={i} className="h-20 rounded-xl bg-muted/40 animate-pulse border border-slate-200/40" />
+                    <div key={i} className="h-20 rounded-xl bg-muted/40 animate-pulse border border-slate-200/40" />
                  ))}
                </div>
             ) : upcoming && upcoming.length > 0 ? (

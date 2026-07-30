@@ -11,6 +11,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { subjectsTable, topicsTable } from "./subjects";
+import { usersTable } from "./users";
 
 export const questionsTable = pgTable("questions", {
   id: serial("id").primaryKey(),
@@ -50,6 +51,8 @@ export const questionsTable = pgTable("questions", {
 }, (table) => [
   index("questions_subject_id_idx").on(table.subjectId),
   index("questions_topic_id_idx").on(table.topicId),
+  index("questions_created_at_idx").on(table.createdAt),
+  index("questions_updated_at_idx").on(table.updatedAt),
 ]);
 
 export const questionOptionsTable = pgTable("question_options", {
@@ -77,3 +80,26 @@ export const insertQuestionOptionSchema = createInsertSchema(
 ).omit({ id: true });
 export type InsertQuestionOption = z.infer<typeof insertQuestionOptionSchema>;
 export type QuestionOption = typeof questionOptionsTable.$inferSelect;
+
+export const questionReportsTable = pgTable("question_reports", {
+  id: serial("id").primaryKey(),
+  questionId: integer("question_id")
+    .notNull()
+    .references(() => questionsTable.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}, (table) => [
+  index("question_reports_question_id_idx").on(table.questionId),
+  index("question_reports_user_id_idx").on(table.userId),
+]);
+
+export const insertQuestionReportSchema = createInsertSchema(
+  questionReportsTable
+).omit({ id: true, createdAt: true });
+export type InsertQuestionReport = z.infer<typeof insertQuestionReportSchema>;
+export type QuestionReport = typeof questionReportsTable.$inferSelect;

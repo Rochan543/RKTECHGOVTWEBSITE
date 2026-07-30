@@ -34,6 +34,16 @@ const Bookmarks = React.lazy(() => import('@/pages/bookmarks'));
 const Settings = React.lazy(() => import('@/pages/settings'));
 const DailyGK = React.lazy(() => import('@/pages/daily-gk'));
 const Achievements = React.lazy(() => import('@/pages/achievements'));
+const PracticeSetup = React.lazy(() => import('@/pages/practice-setup'));
+const PracticeSession = React.lazy(() => import('@/pages/practice-session'));
+const PracticeResults = React.lazy(() => import('@/pages/practice-results'));
+
+const CurrentAffairsDashboard = React.lazy(() => import('@/pages/current-affairs-dashboard'));
+const CurrentAffairsArticle = React.lazy(() => import('@/pages/current-affairs-article'));
+const CurrentAffairsQuiz = React.lazy(() => import('@/pages/current-affairs-quiz'));
+const CurrentAffairsBookmarks = React.lazy(() => import('@/pages/current-affairs-bookmarks'));
+const CurrentAffairsHistory = React.lazy(() => import('@/pages/current-affairs-history'));
+
 
 // Admin Pages (Lazy)
 const AdminDashboard = React.lazy(() => import('@/pages/admin-dashboard'));
@@ -44,15 +54,27 @@ const AdminSubjects = React.lazy(() => import('@/pages/admin-subjects'));
 const AdminUsers = React.lazy(() => import('@/pages/admin-users'));
 const AdminNotes = React.lazy(() => import('@/pages/admin-notes'));
 const AdminCurrentAffairs = React.lazy(() => import('@/pages/admin-current-affairs'));
+const AdminRepository = React.lazy(() => import('@/pages/admin-repository'));
+const AdminCollectionDetails = React.lazy(() => import('@/pages/admin-collection-details'));
+const AdminAdaptive = React.lazy(() => import('@/pages/admin-adaptive'));
 
 // New Pages (Lazy)
 const SuperAdmin = React.lazy(() => import('@/pages/super-admin'));
 const Certificates = React.lazy(() => import('@/pages/certificates'));
 const StudyPlanner = React.lazy(() => import('@/pages/study-planner'));
+const AdaptiveLearning = React.lazy(() => import('@/pages/adaptive'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000 },
+    queries: {
+      retry: (failureCount, error: any) => {
+        if (error?.status === 401 || error?.status === 403 || error?.statusCode === 401 || error?.statusCode === 403) {
+          return false;
+        }
+        return failureCount < 1;
+      },
+      staleTime: 30_000,
+    },
   },
 });
 
@@ -155,6 +177,16 @@ function Router() {
       <Route path="/settings">{() => <DashboardRoute component={Settings} />}</Route>
       <Route path="/daily-gk">{() => <DashboardRoute component={DailyGK} />}</Route>
       <Route path="/achievements">{() => <DashboardRoute component={Achievements} />}</Route>
+      <Route path="/current-affairs">{() => <DashboardRoute component={CurrentAffairsDashboard} />}</Route>
+      <Route path="/current-affairs/articles/:id">{() => <DashboardRoute component={CurrentAffairsArticle} />}</Route>
+      <Route path="/current-affairs/quiz/:id">{() => <DashboardRoute component={CurrentAffairsQuiz} />}</Route>
+      <Route path="/current-affairs/bookmarks">{() => <DashboardRoute component={CurrentAffairsBookmarks} />}</Route>
+      <Route path="/current-affairs/history">{() => <DashboardRoute component={CurrentAffairsHistory} />}</Route>
+
+      {/* Practice Module */}
+      <Route path="/practice/setup">{() => <DashboardRoute component={PracticeSetup} />}</Route>
+      <Route path="/practice/session/:sessionId">{() => <ProtectedRoute component={PracticeSession} />}</Route>
+      <Route path="/practice/results/:sessionId">{() => <DashboardRoute component={PracticeResults} />}</Route>
 
       {/* Fullscreen Exam Engine */}
       <Route path="/exam/:sessionId">{() => <ProtectedRoute component={ExamEngine} />}</Route>
@@ -162,6 +194,7 @@ function Router() {
       {/* Student extra pages */}
       <Route path="/certificates">{() => <DashboardRoute component={Certificates} />}</Route>
       <Route path="/study-planner">{() => <DashboardRoute component={StudyPlanner} />}</Route>
+      <Route path="/adaptive">{() => <DashboardRoute component={AdaptiveLearning} />}</Route>
 
       {/* Admin */}
       <Route path="/admin">{() => <DashboardRoute adminOnly component={AdminDashboard} />}</Route>
@@ -170,10 +203,21 @@ function Router() {
       <Route path="/admin/exams/:id/edit">{() => <DashboardRoute adminOnly component={AdminExamForm} />}</Route>
       <Route path="/admin/exams">{() => <DashboardRoute adminOnly component={AdminExams} />}</Route>
       <Route path="/admin/questions">{() => <DashboardRoute adminOnly component={AdminQuestions} />}</Route>
+      <Route path="/admin/repository">{() => <DashboardRoute adminOnly component={AdminRepository} />}</Route>
+      <Route path="/admin/repository/subject/:subjectId">{() => <DashboardRoute adminOnly component={AdminRepository} />}</Route>
+      <Route path="/admin/repository/subject/:subjectId/topic/:topicId">{() => <DashboardRoute adminOnly component={AdminRepository} />}</Route>
+      <Route path="/admin/collections/:id">{() => <DashboardRoute adminOnly component={AdminCollectionDetails} />}</Route>
       <Route path="/admin/subjects">{() => <DashboardRoute adminOnly component={AdminSubjects} />}</Route>
       <Route path="/admin/users">{() => <DashboardRoute adminOnly component={AdminUsers} />}</Route>
       <Route path="/admin/notes">{() => <DashboardRoute adminOnly component={AdminNotes} />}</Route>
       <Route path="/admin/current-affairs">{() => <DashboardRoute adminOnly component={AdminCurrentAffairs} />}</Route>
+      <Route path="/admin/adaptive">{() => <DashboardRoute adminOnly component={AdminAdaptive} />}</Route>
+      <Route path="/admin/adaptive/recommendations">{() => <DashboardRoute adminOnly component={AdminAdaptive} />}</Route>
+      <Route path="/admin/adaptive/mastery">{() => <DashboardRoute adminOnly component={AdminAdaptive} />}</Route>
+      <Route path="/admin/adaptive/study-plans">{() => <DashboardRoute adminOnly component={AdminAdaptive} />}</Route>
+      <Route path="/admin/adaptive/revision">{() => <DashboardRoute adminOnly component={AdminAdaptive} />}</Route>
+      <Route path="/admin/adaptive/analytics">{() => <DashboardRoute adminOnly component={AdminAdaptive} />}</Route>
+      <Route path="/admin/adaptive/settings">{() => <DashboardRoute adminOnly component={AdminAdaptive} />}</Route>
 
       {/* Super Admin Only */}
       <Route path="/super-admin">{() => <DashboardRoute superAdminOnly component={SuperAdmin} />}</Route>
@@ -202,7 +246,11 @@ export function prefetchRoute(path: string) {
   else if (path === '/achievements') import('@/pages/achievements');
   else if (path === '/certificates') import('@/pages/certificates');
   else if (path === '/study-planner') import('@/pages/study-planner');
+  else if (path === '/adaptive') import('@/pages/adaptive');
+  else if (path.startsWith('/admin/adaptive')) import('@/pages/admin-adaptive');
   else if (path === '/super-admin') import('@/pages/super-admin');
+  else if (path.startsWith('/admin/repository')) import('@/pages/admin-repository');
+  else if (path.startsWith('/admin/collections/')) import('@/pages/admin-collection-details');
 }
 
 function RouteTracker({ onReady }: { onReady: () => void }) {

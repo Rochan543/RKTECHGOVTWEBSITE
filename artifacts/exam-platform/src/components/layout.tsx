@@ -20,7 +20,7 @@ import {
   LayoutDashboard, FileText, BarChart2, Trophy, BookOpen, User as UserIcon,
   LogOut, ShieldCheck, Database, Menu, Bell, TrendingUp, Target, Bookmark,
   XCircle, Settings, Newspaper, Award, Users, BookMarked, CalendarDays,
-  Medal, Shield, Globe,
+  Medal, Shield, Globe, FolderTree, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -238,6 +238,7 @@ function StudentNav() {
         <SidebarMenu>
           <NavItem href="/practice" label="Practice Hub" icon={Target} />
           <NavItem href="/exams" label="Test Series" icon={FileText} />
+          <NavItem href="/adaptive" label="Adaptive Learning" icon={Sparkles} />
         </SidebarMenu>
       </SidebarGroup>
 
@@ -257,6 +258,7 @@ function StudentNav() {
           <NavItem href="/notes" label="Study Material" icon={BookOpen} />
           <NavItem href="/bookmarks" label="Bookmarks" icon={Bookmark} />
           <NavItem href="/study-planner" label="Study Planner" icon={CalendarDays} />
+          <NavItem href="/current-affairs" label="Current Affairs" icon={Globe} />
           <NavItem href="/daily-gk" label="Daily GK" icon={Newspaper} />
         </SidebarMenu>
       </SidebarGroup>
@@ -300,9 +302,13 @@ function AdminNav() {
         <SidebarMenu>
           <NavItem href="/admin/exams" label="Exams" icon={FileText} />
           <NavItem href="/admin/questions" label="Question Bank" icon={Database} />
+          <NavItem href="/admin/repository" label="Question Repository" icon={FolderTree} />
+          <NavItem href="/admin?tab=collections" label="Collections" icon={BookMarked} />
           <NavItem href="/admin/subjects" label="Subjects & Topics" icon={BookMarked} />
           <NavItem href="/admin/notes" label="Notes & PDFs" icon={BookOpen} />
-          <NavItem href="/admin/current-affairs" label="Current Affairs" icon={Globe} />
+          <NavItem href="/admin/current-affairs" label="Current Affairs CMS" icon={Globe} />
+          <NavItem href="/admin/adaptive" label="Adaptive Learning" icon={Sparkles} />
+          <NavItem href="/admin/adaptive/analytics" label="Analytics" icon={BarChart2} />
         </SidebarMenu>
       </SidebarGroup>
 

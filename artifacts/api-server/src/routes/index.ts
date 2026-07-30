@@ -21,6 +21,17 @@ import currentAffairsRouter from "./v1/current-affairs";
 import superAdminRouter from "./v1/super-admin";
 import uploadRouter from "./v1/upload";
 import filesRouter from "./v1/files";
+import collectionsRouter from "./v1/collections";
+import repositoryRouter from "./v1/repository";
+import practiceRouter from "./v1/practice";
+import analyticsRouter from "./v1/analytics";
+import adaptiveRouter from "./v1/adaptive";
+import gamificationRouter from "./v1/gamification";
+import missionsRouter from "./v1/missions";
+import goalsRouter from "./v1/goals";
+import studyTasksRouter from "./v1/study-tasks";
+import performanceTimelineRouter from "./v1/performance-timeline";
+import exportsRouter from "./v1/exports";
 
 const router: IRouter = Router();
 
@@ -46,5 +57,17 @@ router.use(currentAffairsRouter);
 router.use(superAdminRouter);
 router.use(uploadRouter);
 router.use(filesRouter);
+router.use(collectionsRouter);
+router.use(repositoryRouter);
+router.use(practiceRouter);
+router.use(analyticsRouter);
+router.use(adaptiveRouter);
+router.use(gamificationRouter);
+router.use(missionsRouter);
+router.use(goalsRouter);
+router.use(studyTasksRouter);
+router.use(performanceTimelineRouter);
+router.use(exportsRouter);
+
 
 export default router;
