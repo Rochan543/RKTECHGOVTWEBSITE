@@ -6,6 +6,12 @@ import {
   subjectsTable,
   topicsTable,
   questionReportsTable,
+  bookmarksTable,
+  wrongAnswersTable,
+  practiceSessionQuestionsTable,
+  practiceSessionAnswersTable,
+  questionCollectionItemsTable,
+  sessionAnswersTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAdmin, requireAuth, type AuthRequest } from "../../middlewares/auth";
@@ -191,13 +197,54 @@ router.put("/v1/questions/:id", requireAdmin, async (req, res): Promise<void> =>
 });
 
 router.delete("/v1/questions/:id", requireAdmin, async (req, res): Promise<void> => {
-  const params = DeleteQuestionParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
+  try {
+    const params = DeleteQuestionParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+
+    const questionId = params.data.id;
+
+    // Check for references in active session or practice tables
+    const [practiceQ, practiceA, sessionA, wrongA, bookmark, collectionItem] = await Promise.all([
+      db.select({ id: practiceSessionQuestionsTable.id }).from(practiceSessionQuestionsTable).where(eq(practiceSessionQuestionsTable.questionId, questionId)).limit(1),
+      db.select({ id: practiceSessionAnswersTable.id }).from(practiceSessionAnswersTable).where(eq(practiceSessionAnswersTable.questionId, questionId)).limit(1),
+      db.select({ id: sessionAnswersTable.id }).from(sessionAnswersTable).where(eq(sessionAnswersTable.questionId, questionId)).limit(1),
+      db.select({ id: wrongAnswersTable.id }).from(wrongAnswersTable).where(eq(wrongAnswersTable.questionId, questionId)).limit(1),
+      db.select({ id: bookmarksTable.id }).from(bookmarksTable).where(eq(bookmarksTable.questionId, questionId)).limit(1),
+      db.select({ id: questionCollectionItemsTable.id }).from(questionCollectionItemsTable).where(eq(questionCollectionItemsTable.questionId, questionId)).limit(1)
+    ]);
+
+    if (
+      practiceQ.length > 0 ||
+      practiceA.length > 0 ||
+      sessionA.length > 0 ||
+      wrongA.length > 0 ||
+      bookmark.length > 0 ||
+      collectionItem.length > 0
+    ) {
+      res.status(409).json({ error: "This question is referenced by practice sessions and cannot be deleted." });
+      return;
+    }
+
+    // Delete child records first to ensure no constraint violations
+    await db.delete(questionOptionsTable).where(eq(questionOptionsTable.questionId, questionId));
+    await db.delete(questionReportsTable).where(eq(questionReportsTable.questionId, questionId));
+
+    // Delete the main question record
+    const result = await db.delete(questionsTable).where(eq(questionsTable.id, questionId)).returning();
+
+    if (result.length === 0) {
+      res.status(404).json({ error: "Question not found" });
+      return;
+    }
+
+    res.json({ message: "Question deleted" });
+  } catch (error) {
+    console.error("Error deleting question:", error);
+    res.status(500).json({ error: error instanceof Error ? error.message : "Internal Server Error" });
   }
-  await db.delete(questionsTable).where(eq(questionsTable.id, params.data.id));
-  res.json({ message: "Question deleted" });
 });
 
 // Bulk import endpoint — accepts an array of questions and creates them all
