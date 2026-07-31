@@ -1,0 +1,458 @@
+# CRITICAL PRODUCTION STABILIZATION TASK
+
+This is a LIVE PRODUCTION application.
+
+DO NOT redesign the UI.
+
+DO NOT change any existing functionality.
+
+DO NOT remove features.
+
+DO NOT rewrite working modules.
+
+DO NOT introduce breaking changes.
+
+DO NOT replace existing architecture.
+
+Your ONLY objective is to stabilize the entire application and eliminate every production issue while preserving 100% backward compatibility.
+
+=========================================================
+PRIMARY GOAL
+=========================================================
+
+The website must become completely production ready.
+
+Everything currently implemented must continue working exactly the same.
+
+Only fix bugs, errors, broken integrations, performance issues, deployment issues and console errors.
+
+=========================================================
+STRICT REQUIREMENTS
+=========================================================
+
+• Preserve all existing UI.
+• Preserve all routes.
+• Preserve all business logic.
+• Preserve all APIs.
+• Preserve database schema unless absolutely required.
+• Preserve authentication.
+• Preserve Admin, Student and Super Admin functionality.
+• Do not remove any existing feature.
+• Do not change user workflows.
+• Maintain complete backward compatibility.
+
+=========================================================
+FULL APPLICATION AUDIT
+=========================================================
+
+Perform a complete audit of the entire codebase.
+
+Inspect:
+
+Frontend
+
+Backend
+
+Database
+
+API layer
+
+Authentication
+
+React Query
+
+State Management
+
+Build Configuration
+
+Environment Variables
+
+Render Deployment
+
+Netlify Deployment
+
+Drizzle
+
+PostgreSQL
+
+OpenAPI
+
+Generated API Clients
+
+=========================================================
+FIX ALL CONSOLE ERRORS
+=========================================================
+
+Identify and resolve every browser console error including:
+
+404
+
+400
+
+401
+
+403
+
+405
+
+409
+
+422
+
+429
+
+500
+
+Unhandled Promise Rejections
+
+React Errors
+
+React Warnings
+
+Hydration Issues
+
+TypeScript Errors
+
+Runtime Exceptions
+
+Network Errors
+
+Source Map Errors
+
+Build Warnings
+
+Deprecation Warnings
+
+Unhandled Rejections
+
+Memory Leaks
+
+Infinite Loops
+
+Duplicate Requests
+
+React Query Errors
+
+Everything must be resolved.
+
+=========================================================
+API VERIFICATION
+=========================================================
+
+Audit every frontend API request.
+
+Verify that:
+
+Every endpoint exists.
+
+Every router is registered.
+
+Every controller executes correctly.
+
+Every service returns valid data.
+
+Every database query works.
+
+Every endpoint returns the expected response.
+
+Every response matches frontend expectations.
+
+No endpoint should return 404.
+
+No endpoint should return HTML error pages.
+
+All APIs must return proper JSON responses.
+
+=========================================================
+DATABASE
+=========================================================
+
+Verify:
+
+Schema
+
+Foreign Keys
+
+Indexes
+
+Constraints
+
+Relationships
+
+Drizzle Migrations
+
+Query Performance
+
+Transactions
+
+Data Integrity
+
+Fix all issues while preserving existing data.
+
+=========================================================
+REACT QUERY
+=========================================================
+
+Verify every query.
+
+Verify every mutation.
+
+Verify cache invalidation.
+
+Verify optimistic updates.
+
+Remove duplicate requests.
+
+Prevent infinite refetch loops.
+
+Prevent stale cache.
+
+Ensure proper loading states.
+
+Ensure proper error handling.
+
+=========================================================
+AUTHENTICATION
+=========================================================
+
+Verify:
+
+Student Login
+
+Admin Login
+
+Super Admin Login
+
+JWT
+
+Sessions
+
+Permissions
+
+Protected Routes
+
+Role Guards
+
+Refresh Tokens
+
+Logout
+
+Everything must work correctly.
+
+=========================================================
+ADMIN
+=========================================================
+
+Verify every Admin feature.
+
+Create
+
+Read
+
+Update
+
+Delete
+
+must work correctly.
+
+Ensure Admin changes immediately appear for users.
+
+=========================================================
+STUDENT PANEL
+=========================================================
+
+Verify every page.
+
+Dashboard
+
+Practice
+
+Adaptive Learning
+
+Analytics
+
+Performance
+
+Goals
+
+Missions
+
+Gamification
+
+Current Affairs
+
+Bookmarks
+
+History
+
+Profile
+
+Settings
+
+Leaderboard
+
+Everything must load correctly.
+
+=========================================================
+SUPER ADMIN
+=========================================================
+
+Verify:
+
+User Management
+
+Admin Management
+
+Role Management
+
+Permissions
+
+Audit Logs
+
+Configurations
+
+System Settings
+
+Analytics
+
+Everything must work.
+
+=========================================================
+DEPLOYMENT
+=========================================================
+
+Verify:
+
+Render Backend
+
+Netlify Frontend
+
+Environment Variables
+
+API Base URL
+
+CORS
+
+Production Build
+
+Static Assets
+
+Build Commands
+
+Deployment Logs
+
+Health Checks
+
+Ensure frontend and backend are running the same version.
+
+=========================================================
+PERFORMANCE
+=========================================================
+
+Optimize:
+
+Database Queries
+
+React Rendering
+
+Bundle Size
+
+Lazy Loading
+
+Code Splitting
+
+Caching
+
+Image Loading
+
+API Calls
+
+Memory Usage
+
+Network Requests
+
+Without changing existing behaviour.
+
+=========================================================
+ERROR HANDLING
+=========================================================
+
+Every failure must have graceful error handling.
+
+No crashes.
+
+No blank screens.
+
+No infinite loading.
+
+No uncaught exceptions.
+
+=========================================================
+FINAL VERIFICATION
+=========================================================
+
+Run a complete end-to-end verification of the entire application.
+
+Verify every page.
+
+Verify every API.
+
+Verify every database operation.
+
+Verify every user flow.
+
+Verify desktop.
+
+Verify tablet.
+
+Verify mobile.
+
+=========================================================
+SUCCESS CRITERIA
+=========================================================
+
+✅ Zero browser console errors.
+
+✅ Zero failed network requests.
+
+✅ Zero React errors.
+
+✅ Zero React warnings.
+
+✅ Zero TypeScript errors.
+
+✅ Zero API 404s.
+
+✅ Zero build errors.
+
+✅ Zero deployment issues.
+
+✅ Zero broken routes.
+
+✅ Zero infinite loading states.
+
+✅ Zero placeholder data.
+
+✅ Zero dummy responses.
+
+✅ All Admin functionality working.
+
+✅ All Student functionality working.
+
+✅ All Super Admin functionality working.
+
+✅ Full PostgreSQL integration.
+
+✅ Production deployment fully stable.
+
+=========================================================
+IMPORTANT
+=========================================================
+
+Do NOT stop after fixing a few issues.
+
+Continue auditing the entire project until no production issues remain.
+
+Do not claim completion until the browser console is completely clean, the network tab shows no failed requests, all pages work correctly, and the entire application has been verified end-to-end.
+
+Preserve every existing feature, every UI, every workflow, and every functionality while making the application fully stable and production-ready.

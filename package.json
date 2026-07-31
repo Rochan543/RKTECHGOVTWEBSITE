@@ -3,10 +3,14 @@
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
+<<<<<<< HEAD
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22.0.0"
   },
+=======
+  "packageManager": "pnpm@10.26.1",
+>>>>>>> 81abd53 (Refactor API server auth and update project schemas and platform documentation)
   "scripts": {
     "build": "pnpm install --prod=false && pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",

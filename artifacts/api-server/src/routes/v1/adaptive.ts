@@ -1078,7 +1078,6 @@ async function seedDefaultTemplatesIfEmpty() {
     ];
 
     await db.insert(studyPlanTemplatesTable).values(defaults);
-    console.log("Seeded default study plan templates.");
   }
 }
 
@@ -1186,12 +1185,9 @@ async function forceRegenerateDailyPlan(userId: number, dateStr: string) {
 // 8. GET /api/v1/adaptive/admin
 router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   try {
-    console.log("=== GET /api/v1/adaptive/admin handler started ===");
     await seedDefaultTemplatesIfEmpty();
-    console.log("GET /api/v1/adaptive/admin: Seeding checked.");
 
     // 1. Students Needing Help
-    console.log("GET /api/v1/adaptive/admin: Querying students needing help...");
     const lowAccuracyStudents = await db
       .select({
         id: usersTable.id,
@@ -1207,7 +1203,6 @@ router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Pr
       .orderBy(asc(sql`avg(${resultsTable.accuracy})`))
       .limit(10);
 
-    console.log("GET /api/v1/adaptive/admin: Querying difficult topics...");
     // 2. Most Difficult Topics
     const difficultTopics = await db
       .select({
@@ -1226,7 +1221,6 @@ router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Pr
       .orderBy(asc(sql`avg(case when ${practiceSessionAnswersTable.isCorrect} = true then 100.0 else 0.0 end)`))
       .limit(10);
 
-    console.log("GET /api/v1/adaptive/admin: Querying low completion collections...");
     // 3. Collections with Lowest Completion
     const lowCompletionCollections = await db
       .select({
@@ -1241,7 +1235,6 @@ router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Pr
       .orderBy(asc(sql`(count(case when ${practiceSessionsTable.status} = 'completed' then 1 end) * 100.0 / count(*))`))
       .limit(10);
 
-    console.log("GET /api/v1/adaptive/admin: Querying most improved...");
     // 4. Most Improved Students
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const mostImproved = await db
@@ -1260,7 +1253,6 @@ router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Pr
       .orderBy(desc(sql`avg(case when ${resultsTable.createdAt} >= ${sevenDaysAgo} then ${resultsTable.accuracy} end) - avg(case when ${resultsTable.createdAt} < ${sevenDaysAgo} then ${resultsTable.accuracy} end)`))
       .limit(10);
 
-    console.log("GET /api/v1/adaptive/admin: Querying least active...");
     // 5. Least Active Students
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
     const leastActive = await db
@@ -1277,7 +1269,6 @@ router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Pr
       .orderBy(asc(sql`count(case when ${resultsTable.createdAt} >= ${fourteenDaysAgo} then 1 end)`), asc(count(resultsTable.id)))
       .limit(10);
 
-    console.log("GET /api/v1/adaptive/admin: Querying live recommendations...");
     // 6. Live recommendations
     const recommendationsRaw = await db
       .select({
@@ -1316,7 +1307,6 @@ router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Pr
       });
     }
 
-    console.log("GET /api/v1/adaptive/admin: Querying templates list...");
     // 7. Live Study Plans templates list
     const templates = await db.select().from(studyPlanTemplatesTable);
     const studyPlans = [];
@@ -1368,7 +1358,6 @@ router.get("/v1/adaptive/admin", requireAdmin, async (req: AuthRequest, res): Pr
       });
     }
 
-    console.log("GET /api/v1/adaptive/admin: Querying revision queues...");
     // 8. Live Revision Queues stats for students
     const studentsList = await db
       .select({ id: usersTable.id, name: usersTable.name, avgAccuracy: sql<number>`avg(${resultsTable.accuracy})::real` })

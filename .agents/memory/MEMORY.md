@@ -1,1 +1,1 @@
-- [SSC Platform build quirks](ssc-platform-quirks.md) — esbuild + zod/v4 subpath, customFetch export gap, runtime-managed DATABASE_URL
+- [SSC Platform build quirks](ssc-platform-quirks.md) — esbuild/zod/v4, customFetch browser base URL, pnpm version pin, Vite proxy port, trust proxy

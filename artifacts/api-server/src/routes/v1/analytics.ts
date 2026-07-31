@@ -561,8 +561,8 @@ router.get("/v1/analytics/admin", requireAdmin, async (req: AuthRequest, res): P
       mockTests,
       averageAccuracy,
       completionRate,
-      dailyActiveUsers: Math.max(dau, 1),
-      monthlyActiveUsers: Math.max(mau, 1),
+      dailyActiveUsers: dau,
+      monthlyActiveUsers: mau,
     });
   } catch (error: any) {
     console.error(error);

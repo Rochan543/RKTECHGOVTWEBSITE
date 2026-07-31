@@ -258,7 +258,8 @@ router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res
     }
   }
 
-  const accuracy = answers.length > 0 ? (correct / answers.length) * 100 : 0;
+  const attempted = correct + incorrect;
+  const accuracy = attempted > 0 ? (correct / attempted) * 100 : 0;
   const totalMarks = exam?.totalMarks ?? 100;
 
   await db.update(testSessionsTable).set({

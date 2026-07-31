@@ -2,10 +2,14 @@
   "name": "@workspace/api-server",
   "version": "0.0.0",
   "private": true,
+<<<<<<< HEAD
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=22.0.0"
   },
+=======
+  "packageManager": "pnpm@10.26.1",
+>>>>>>> 81abd53 (Refactor API server auth and update project schemas and platform documentation)
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development pnpm run build && pnpm run start",

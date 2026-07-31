@@ -24,7 +24,11 @@ const getInitialBaseUrl = (): string => {
     }
     return url;
   }
-  return "http://localhost:3000";
+  // In browser environments, use relative paths so requests go through the
+  // Vite dev-server proxy (or the same origin in production). An absolute
+  // localhost URL would bypass the proxy and fail on non-local deployments.
+  if (typeof window !== "undefined") return "";
+  return "http://localhost:8080";
 };
 
 export const API_BASE_URL = getInitialBaseUrl();

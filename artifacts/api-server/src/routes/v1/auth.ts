@@ -91,12 +91,7 @@ router.post("/v1/auth/login", async (req, res): Promise<void> => {
     }
     const token = signToken({ userId: user.id, role: user.role });
     const cookieOpts = getCookieOptions(req);
-    console.log("=== login CALLED ===");
-    console.log("JWT generated:", token);
-    console.log("Cookie name: token");
-    console.log("Cookie options:", JSON.stringify(cookieOpts));
     res.cookie("token", token, cookieOpts);
-    console.log("Response headers after setting cookie:", JSON.stringify(res.getHeaders()));
     
     res.json({
       token,
