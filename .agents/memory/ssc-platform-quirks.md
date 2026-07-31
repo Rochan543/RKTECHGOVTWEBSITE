@@ -3,6 +3,14 @@ name: SSC Platform build quirks
 description: Non-obvious environment and build issues specific to this SSC Exam Platform monorepo
 ---
 
+## drizzle-zod v0.8.x returns zod v4 types — use `_output` not `z.infer`
+
+`createInsertSchema` from drizzle-zod v0.8.x (with zod ≥3.25) returns a zod v4 `ZodObject` that does NOT satisfy the `ZodType<any, any, any>` constraint used by `z.infer`. Using `z.infer<typeof insertXxxSchema>` produces TS2344 errors across all schema files.
+
+**Why:** Zod 3.25+ ships with the v4 API internally. drizzle-zod v0.8.x uses the new API. `z.infer`'s generic constraint is still the old v3 `ZodType<any, any, any>`, which the v4 types don't satisfy.
+
+**How to apply:** Replace `z.infer<typeof schema>` with `(typeof schema)['_output']`. Works on both single-line and multi-line type exports. `_output` is a class property on all ZodType derivatives in both v3 and v4.
+
 ## esbuild cannot resolve `zod/v4` subpath
 
 API server routes and DB schema files that import `import { z } from "zod/v4"` will fail the esbuild bundle step. Use `import { z } from "zod"` instead.

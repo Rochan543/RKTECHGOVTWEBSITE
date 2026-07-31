@@ -77,9 +77,7 @@ export const insertQuestionCollectionSchema = createInsertSchema(
   createdAt: true,
   updatedAt: true,
 });
-export type InsertQuestionCollection = z.infer<
-  typeof insertQuestionCollectionSchema
->;
+export type InsertQuestionCollection = (typeof insertQuestionCollectionSchema)['_output'];
 export type QuestionCollection = typeof questionCollectionsTable.$inferSelect;
 
 export const insertQuestionCollectionItemSchema = createInsertSchema(
@@ -88,9 +86,7 @@ export const insertQuestionCollectionItemSchema = createInsertSchema(
   id: true,
   createdAt: true,
 });
-export type InsertQuestionCollectionItem = z.infer<
-  typeof insertQuestionCollectionItemSchema
->;
+export type InsertQuestionCollectionItem = (typeof insertQuestionCollectionItemSchema)['_output'];
 export type QuestionCollectionItem = typeof questionCollectionItemsTable.$inferSelect;
 
 export const insertExamCollectionSchema = createInsertSchema(
@@ -99,7 +95,5 @@ export const insertExamCollectionSchema = createInsertSchema(
   id: true,
   createdAt: true,
 });
-export type InsertExamCollection = z.infer<
-  typeof insertExamCollectionSchema
->;
+export type InsertExamCollection = (typeof insertExamCollectionSchema)['_output'];
 export type ExamCollection = typeof examCollectionsTable.$inferSelect;

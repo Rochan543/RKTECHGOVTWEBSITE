@@ -102,11 +102,11 @@ export const insertExamSchema = createInsertSchema(examsTable).omit({
   createdAt: true,
   updatedAt: true,
 });
-export type InsertExam = z.infer<typeof insertExamSchema>;
+export type InsertExam = (typeof insertExamSchema)['_output'];
 export type Exam = typeof examsTable.$inferSelect;
 
 export const insertExamSectionSchema = createInsertSchema(
   examSectionsTable
 ).omit({ id: true, createdAt: true });
-export type InsertExamSection = z.infer<typeof insertExamSectionSchema>;
+export type InsertExamSection = (typeof insertExamSectionSchema)['_output'];
 export type ExamSection = typeof examSectionsTable.$inferSelect;

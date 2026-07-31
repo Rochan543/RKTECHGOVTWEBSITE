@@ -72,13 +72,13 @@ export const insertQuestionSchema = createInsertSchema(questionsTable).omit({
   createdAt: true,
   updatedAt: true,
 });
-export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
+export type InsertQuestion = (typeof insertQuestionSchema)['_output'];
 export type Question = typeof questionsTable.$inferSelect;
 
 export const insertQuestionOptionSchema = createInsertSchema(
   questionOptionsTable
 ).omit({ id: true });
-export type InsertQuestionOption = z.infer<typeof insertQuestionOptionSchema>;
+export type InsertQuestionOption = (typeof insertQuestionOptionSchema)['_output'];
 export type QuestionOption = typeof questionOptionsTable.$inferSelect;
 
 export const questionReportsTable = pgTable("question_reports", {
@@ -101,5 +101,5 @@ export const questionReportsTable = pgTable("question_reports", {
 export const insertQuestionReportSchema = createInsertSchema(
   questionReportsTable
 ).omit({ id: true, createdAt: true });
-export type InsertQuestionReport = z.infer<typeof insertQuestionReportSchema>;
+export type InsertQuestionReport = (typeof insertQuestionReportSchema)['_output'];
 export type QuestionReport = typeof questionReportsTable.$inferSelect;

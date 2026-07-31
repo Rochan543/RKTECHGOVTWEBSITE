@@ -16,5 +16,5 @@ export const examCategoriesTable = pgTable("exam_categories", {
 export const insertExamCategorySchema = createInsertSchema(
   examCategoriesTable
 ).omit({ id: true, createdAt: true });
-export type InsertExamCategory = z.infer<typeof insertExamCategorySchema>;
+export type InsertExamCategory = (typeof insertExamCategorySchema)['_output'];
 export type ExamCategory = typeof examCategoriesTable.$inferSelect;

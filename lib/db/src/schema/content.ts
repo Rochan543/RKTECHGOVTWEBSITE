@@ -111,13 +111,13 @@ export const insertNoteSchema = createInsertSchema(notesTable).omit({
   id: true,
   createdAt: true,
 });
-export type InsertNote = z.infer<typeof insertNoteSchema>;
+export type InsertNote = (typeof insertNoteSchema)['_output'];
 export type Note = typeof notesTable.$inferSelect;
 
 export const insertNotificationSchema = createInsertSchema(
   notificationsTable
 ).omit({ id: true, createdAt: true });
-export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertNotification = (typeof insertNotificationSchema)['_output'];
 export type Notification = typeof notificationsTable.$inferSelect;
 
 export type Bookmark = typeof bookmarksTable.$inferSelect;
@@ -127,7 +127,7 @@ export type Bookmark = typeof bookmarksTable.$inferSelect;
 export const insertAchievementSchema = createInsertSchema(achievementsTable).omit({
   id: true, unlockedAt: true,
 });
-export type InsertAchievement = z.infer<typeof insertAchievementSchema>;
+export type InsertAchievement = (typeof insertAchievementSchema)['_output'];
 export type Achievement = typeof achievementsTable.$inferSelect;
 
 export type AuditLog = typeof auditLogsTable.$inferSelect;

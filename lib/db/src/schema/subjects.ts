@@ -29,12 +29,12 @@ export const insertSubjectSchema = createInsertSchema(subjectsTable).omit({
   id: true,
   createdAt: true,
 });
-export type InsertSubject = z.infer<typeof insertSubjectSchema>;
+export type InsertSubject = (typeof insertSubjectSchema)['_output'];
 export type Subject = typeof subjectsTable.$inferSelect;
 
 export const insertTopicSchema = createInsertSchema(topicsTable).omit({
   id: true,
   createdAt: true,
 });
-export type InsertTopic = z.infer<typeof insertTopicSchema>;
+export type InsertTopic = (typeof insertTopicSchema)['_output'];
 export type Topic = typeof topicsTable.$inferSelect;

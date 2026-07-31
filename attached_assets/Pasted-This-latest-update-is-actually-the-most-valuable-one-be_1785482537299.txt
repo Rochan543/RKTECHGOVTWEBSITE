@@ -1,0 +1,158 @@
+This latest update is actually the most valuable one because it changes the direction of the investigation. 
+
+The important part is this:
+
+> **"I have 8 endpoints returning 404."**
+>
+> Then:
+>
+> **"Those 404s are my test URLs being wrong — the actual routes exist at different paths. Let me check the real routes and what the frontend actually calls."** 
+
+If that's true, then the original assumption ("Render is running an old build") may **not** be the root cause. Instead, the issue may be that **the frontend and backend disagree on the API paths**.
+
+For example:
+
+* Frontend calls:
+
+  ```
+  GET /api/v1/goals
+  ```
+* Backend actually exposes:
+
+  ```
+  GET /api/v1/users/goals
+  ```
+
+  or
+
+  ```
+  GET /api/v1/dashboard/goals
+  ```
+
+  or another mounted path.
+
+That would produce **404s even if the deployment is completely up to date**.
+
+---
+
+## I would now give Replit this final task
+
+```text
+# FINAL PRODUCTION API SYNCHRONIZATION
+
+Do NOT guess route paths.
+
+Do NOT manually test arbitrary URLs.
+
+Use the ACTUAL Express router definitions.
+
+==================================================
+
+Audit every frontend API request.
+
+For each frontend request:
+
+1. Find where the request is made.
+
+2. Record the exact URL.
+
+3. Find the Express router that should handle it.
+
+4. Record:
+
+- Route file
+- Mount path
+- router.get()/post() path
+- Final resolved URL
+
+==================================================
+
+Generate a table.
+
+| Frontend URL | Backend Route | Match? | Fix Required |
+
+Example:
+
+Frontend:
+GET /api/v1/goals
+
+Backend:
+router.use("/dashboard", dashboardRouter)
+router.get("/goals")
+
+Final URL:
+/api/v1/dashboard/goals
+
+Result:
+❌ Mismatch
+
+==================================================
+
+Fix ONLY mismatches.
+
+Either:
+
+- update frontend to call the correct endpoint
+
+OR
+
+- mount the backend route where the frontend expects it
+
+Preserve backward compatibility.
+
+==================================================
+
+After fixes:
+
+Run an automated crawl of the application.
+
+Visit every page.
+
+Capture every network request.
+
+Verify:
+
+- HTTP 200
+- HTTP 201
+- HTTP 204
+- expected 401/403 where authentication is required
+
+There must be:
+
+ZERO unexpected 404s
+
+ZERO unexpected 500s
+
+ZERO failed React Query requests
+
+==================================================
+
+Produce a final report containing:
+
+• Every frontend endpoint
+
+• Matching backend endpoint
+
+• Every mismatch fixed
+
+• Browser console (clean)
+
+• Network tab (clean)
+
+• Production verification completed
+
+Do not declare success until every frontend request resolves to a valid backend route.
+```
+
+---
+
+### My current assessment
+
+From everything you've shared, I now think the most likely causes are:
+
+1. **API path mismatches between frontend and backend** (highest probability).
+2. **A few genuinely missing endpoints**.
+3. **Production environment configuration issues** (database, secrets, etc.).
+4. **Less likely now:** Render serving an old deployment.
+
+The next step should be a **full frontend-to-backend endpoint mapping**, because that will definitively reveal whether the remaining 404s are caused by incorrect URLs or missing routes.

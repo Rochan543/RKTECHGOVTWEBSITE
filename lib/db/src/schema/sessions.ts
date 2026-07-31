@@ -118,18 +118,18 @@ export type InsertViolation = typeof violationsTable.$inferInsert;
 export const insertTestSessionSchema = createInsertSchema(
   testSessionsTable
 ).omit({ id: true, startedAt: true });
-export type InsertTestSession = z.infer<typeof insertTestSessionSchema>;
+export type InsertTestSession = (typeof insertTestSessionSchema)['_output'];
 export type TestSession = typeof testSessionsTable.$inferSelect;
 
 export const insertSessionAnswerSchema = createInsertSchema(
   sessionAnswersTable
 ).omit({ id: true, updatedAt: true });
-export type InsertSessionAnswer = z.infer<typeof insertSessionAnswerSchema>;
+export type InsertSessionAnswer = (typeof insertSessionAnswerSchema)['_output'];
 export type SessionAnswer = typeof sessionAnswersTable.$inferSelect;
 
 export const insertResultSchema = createInsertSchema(resultsTable).omit({
   id: true,
   createdAt: true,
 });
-export type InsertResult = z.infer<typeof insertResultSchema>;
+export type InsertResult = (typeof insertResultSchema)['_output'];
 export type Result = typeof resultsTable.$inferSelect;

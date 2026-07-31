@@ -46,5 +46,5 @@ export const insertUserSchema = createInsertSchema(usersTable).omit({
   createdAt: true,
   updatedAt: true,
 });
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUser = (typeof insertUserSchema)['_output'];
 export type User = typeof usersTable.$inferSelect;

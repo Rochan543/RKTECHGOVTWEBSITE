@@ -30,7 +30,7 @@ export const insertCurrentAffairCategorySchema = createInsertSchema(currentAffai
   createdAt: true,
 });
 export type CurrentAffairCategory = typeof currentAffairCategoriesTable.$inferSelect;
-export type InsertCurrentAffairCategory = z.infer<typeof insertCurrentAffairCategorySchema>;
+export type InsertCurrentAffairCategory = (typeof insertCurrentAffairCategorySchema)['_output'];
 
 // Tags Table
 export const currentAffairTagsTable = pgTable("current_affair_tags", {
@@ -47,7 +47,7 @@ export const insertCurrentAffairTagSchema = createInsertSchema(currentAffairTags
   createdAt: true,
 });
 export type CurrentAffairTag = typeof currentAffairTagsTable.$inferSelect;
-export type InsertCurrentAffairTag = z.infer<typeof insertCurrentAffairTagSchema>;
+export type InsertCurrentAffairTag = (typeof insertCurrentAffairTagSchema)['_output'];
 
 // Current Affairs Articles Table
 export const currentAffairsTable = pgTable("current_affairs", {
@@ -91,7 +91,7 @@ export const insertCurrentAffairsSchema = createInsertSchema(currentAffairsTable
   updatedAt: true,
 });
 export type CurrentAffairs = typeof currentAffairsTable.$inferSelect;
-export type InsertCurrentAffairs = z.infer<typeof insertCurrentAffairsSchema>;
+export type InsertCurrentAffairs = (typeof insertCurrentAffairsSchema)['_output'];
 
 // Article Tags Join Table
 export const currentAffairArticleTagsTable = pgTable("current_affair_article_tags", {
@@ -179,7 +179,7 @@ export const insertCurrentAffairQuizSchema = createInsertSchema(currentAffairQui
   updatedAt: true,
 });
 export type CurrentAffairQuiz = typeof currentAffairQuizzesTable.$inferSelect;
-export type InsertCurrentAffairQuiz = z.infer<typeof insertCurrentAffairQuizSchema>;
+export type InsertCurrentAffairQuiz = (typeof insertCurrentAffairQuizSchema)['_output'];
 
 // Quiz Questions Junction Table
 export const currentAffairQuizQuestionsTable = pgTable("current_affair_quiz_questions", {
@@ -246,4 +246,4 @@ export const insertMonthlyCurrentAffairsSchema = createInsertSchema(monthlyCurre
   updatedAt: true,
 });
 export type MonthlyCurrentAffairs = typeof monthlyCurrentAffairsTable.$inferSelect;
-export type InsertMonthlyCurrentAffairs = z.infer<typeof insertMonthlyCurrentAffairsSchema>;
+export type InsertMonthlyCurrentAffairs = (typeof insertMonthlyCurrentAffairsSchema)['_output'];

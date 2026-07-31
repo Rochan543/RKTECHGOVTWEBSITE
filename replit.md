@@ -1,67 +1,64 @@
-# SSC Exam Platform
+# SSC Exam Platform (RK TECH Portal)
 
-A full-stack exam preparation platform for SSC (Staff Selection Commission) aspirants.
+A production-grade Online Examination Platform for SSC, Banking, Railway, UPSC, and other Indian competitive exams.
 
-## Stack
+## Architecture
 
-- **Frontend**: React 19 + Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, Wouter
-- **Backend**: Express 5, Drizzle ORM, PostgreSQL
-- **Auth**: Custom JWT (HS256 via HMAC, stored in `sessionStorage`)
-- **Monorepo**: pnpm workspaces
+pnpm monorepo with three main parts:
 
-## Structure
+| Package | Path | Description |
+|---------|------|-------------|
+| `@workspace/api-server` | `artifacts/api-server/` | Express 5 REST API, port 8080 |
+| `@workspace/exam-platform` | `artifacts/exam-platform/` | React 19 + Vite frontend |
+| `@workspace/db` | `lib/db/` | Drizzle ORM + PostgreSQL schema & migrations |
+| `@workspace/api-client-react` | `lib/api-client-react/` | Generated React Query hooks (orval) |
+| `@workspace/api-zod` | `lib/api-zod/` | Shared Zod validators |
 
-```
-artifacts/
-  exam-platform/   # React/Vite frontend
-  api-server/      # Express API server
-lib/
-  db/              # Drizzle schema + DB client
-  api-zod/         # Zod schemas shared between FE and BE
-  api-client-react/ # Generated API client hooks
-```
+## Running the Project
 
-## Running locally
+Two workflows must be running simultaneously:
 
-Both services start automatically via Replit workflows:
+- **`artifacts/api-server: API Server`** — `PORT=8080 SESSION_SECRET=$SESSION_SECRET pnpm --filter @workspace/api-server run dev`
+- **`artifacts/exam-platform: web`** — `PORT=22619 BASE_PATH=/ pnpm --filter @workspace/exam-platform run dev`
 
-| Service | Workflow | Command |
-|---------|----------|---------|
-| API server | `artifacts/api-server: API Server` | `pnpm --filter @workspace/api-server run dev` |
-| Frontend | `artifacts/exam-platform: web` | `pnpm --filter @workspace/exam-platform run dev` |
+The Vite dev server proxies `/api/*` to `localhost:8080`.
 
-## Required secrets
+## Database
 
-| Variable | Description |
-|----------|-------------|
-| `SESSION_SECRET` | JWT signing secret (already set) |
-| `DATABASE_URL` | PostgreSQL connection string |
+Uses Replit's built-in PostgreSQL. `DATABASE_URL` is injected automatically at runtime — do NOT set it manually.
 
-## Role hierarchy
-
-```
-student  →  admin  →  super_admin
-```
-
-- **student**: can take exams, view results, bookmarks, notes
-- **admin**: all student access + admin portal (exam/question/user management)
-- **super_admin**: all admin access + Super Admin Control Panel
-
-## RBAC notes
-
-- `requireAuth` middleware always re-validates the user's **current role from the database** — role changes take effect immediately without a re-login.
-- `requireAdmin` allows both `admin` and `super_admin`.
-- `requireSuperAdmin` is for super-admin-only API endpoints.
-- Frontend route guard: `adminOnly` allows `admin`+`super_admin`; `superAdminOnly` allows only `super_admin`.
-
-## Database migrations
-
+To push schema changes:
 ```bash
-cd lib/db
-pnpm drizzle-kit push   # push schema to DB
-pnpm drizzle-kit studio # open Drizzle Studio
+cd lib/db && pnpm run push
 ```
 
-## User preferences
+Schema: `lib/db/src/schema/index.ts`
+Migration SQL: `lib/db/migrations/0001_initial_schema.sql`
 
-<!-- Add any project-level conventions here -->
+## Environment Variables / Secrets
+
+| Key | Type | Notes |
+|-----|------|-------|
+| `SESSION_SECRET` | Secret | JWT signing key — already configured |
+| `DATABASE_URL` | Runtime-managed | Auto-injected by Replit |
+| `CLOUDINARY_CLOUD_NAME` | Secret | Optional — for PDF/image uploads |
+| `CLOUDINARY_API_KEY` | Secret | Optional |
+| `CLOUDINARY_API_SECRET` | Secret | Optional |
+
+## Portals
+
+- **Student Portal** — login/register, dashboard, exams, practice, analytics, leaderboard
+- **Admin Portal** — question management, exam builder, user management, analytics
+- **Super Admin Portal** — platform-wide analytics, admin management, audit logs
+
+## Key Technical Notes
+
+- **Zod imports**: Always `import { z } from "zod"` — never `"zod/v4"` (breaks esbuild bundler)
+- **customFetch**: Returns `""` base URL in browser so relative paths flow through Vite proxy
+- **Trust proxy**: `app.set("trust proxy", 1)` is required for express-rate-limit behind Replit's reverse proxy
+- **API routes**: All backend routes mount under `/api` prefix. Route files define paths with `/v1/` prefix internally (e.g. `router.get("/v1/exams", ...)`)
+- **Vite proxy**: Targets `http://localhost:8080` — must match API Server workflow PORT
+
+## User Preferences
+
+_No preferences recorded yet._
