@@ -1,4 +1,3 @@
 [build]
-base = "artifacts/exam-platform"
-command = "pnpm install && pnpm run build"
-publish = "dist"
+command = "pnpm install --frozen-lockfile && pnpm --filter @workspace/exam-platform build"
+publish = "artifacts/exam-platform/dist"
