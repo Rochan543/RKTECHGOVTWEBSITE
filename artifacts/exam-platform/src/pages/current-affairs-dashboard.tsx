@@ -394,7 +394,7 @@ export default function CurrentAffairsDashboard() {
                             </div>
                             <div className="flex items-center justify-between pt-1 border-t border-dashed">
                               <div className="flex gap-1.5 flex-wrap">
-                                {article.tags.slice(0, 3).map(tag => (
+                                {(article.tags || []).slice(0, 3).map(tag => (
                                   <Badge key={tag.id} className="bg-muted text-muted-foreground border-none font-semibold text-[9px] px-1.5 py-0">
                                     #{tag.name}
                                   </Badge>
