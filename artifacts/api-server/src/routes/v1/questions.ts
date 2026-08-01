@@ -198,7 +198,7 @@ router.put("/v1/questions/:id", requireAdmin, async (req, res): Promise<void> =>
   res.json(await buildQuestion(q));
 });
 
-router.delete("/v1/questions/:id", requireAdmin, async (req, res): Promise<void> => {
+router.delete("/v1/questions/:id", requireAdmin, async (req: AuthRequest, res): Promise<void> => {
   try {
     const params = DeleteQuestionParams.safeParse(req.params);
     if (!params.success) {
@@ -261,9 +261,9 @@ router.delete("/v1/questions/:id", requireAdmin, async (req, res): Promise<void>
     console.log(`reports: ${stats.reports}`);
     console.log(`current_affair_quiz_questions: ${stats.current_affair_quiz_questions}`);
 
-    // Only block deletion if actual student attempt/history exists (session_answers or practice_session_answers)
-    if (stats.session_answers > 0 || stats.practice_session_answers > 0) {
-      res.status(409).json({ error: "This question has been used in student exam/practice history and cannot be deleted." });
+    // Only block deletion if actual student attempt/history exists (session_answers)
+    if (stats.session_answers > 0) {
+      res.status(409).json({ error: "This question has been used in student exam history and cannot be deleted." });
       return;
     }
 
@@ -293,6 +293,9 @@ router.delete("/v1/questions/:id", requireAdmin, async (req, res): Promise<void>
 
         console.log("Deleting practice session questions...");
         await tx.delete(practiceSessionQuestionsTable).where(eq(practiceSessionQuestionsTable.questionId, questionId));
+
+        console.log("Deleting practice session answers...");
+        await tx.delete(practiceSessionAnswersTable).where(eq(practiceSessionAnswersTable.questionId, questionId));
 
         console.log("Deleting options...");
         await tx.delete(questionOptionsTable).where(eq(questionOptionsTable.questionId, questionId));
