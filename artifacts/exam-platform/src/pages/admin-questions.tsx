@@ -146,6 +146,21 @@ export default function AdminQuestions() {
     if (!confirm('Delete this question?')) return;
     remove.mutate({ id }, {
       onSuccess: () => { toast({ title: 'Question deleted' }); invalidate(); },
+      onError: (err: any) => {
+        if (err.status === 409) {
+          toast({
+            title: "Cannot delete question",
+            description: "This question cannot be deleted because it has been used in student practice or exam sessions.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Failed to delete question",
+            description: err.message || "An unexpected error occurred.",
+            variant: "destructive",
+          });
+        }
+      }
     });
   };
 

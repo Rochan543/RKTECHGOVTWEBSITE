@@ -12,8 +12,10 @@ import {
   practiceSessionAnswersTable,
   questionCollectionItemsTable,
   sessionAnswersTable,
+  examQuestionsTable,
+  currentAffairQuizQuestionsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { requireAdmin, requireAuth, type AuthRequest } from "../../middlewares/auth";
 import { createNotificationForStudents, createNotificationForAdmins } from "../../lib/notifications";
 import {
@@ -206,41 +208,112 @@ router.delete("/v1/questions/:id", requireAdmin, async (req, res): Promise<void>
 
     const questionId = params.data.id;
 
-    // Check for references in active session or practice tables
-    const [practiceQ, practiceA, sessionA, wrongA, bookmark, collectionItem] = await Promise.all([
-      db.select({ id: practiceSessionQuestionsTable.id }).from(practiceSessionQuestionsTable).where(eq(practiceSessionQuestionsTable.questionId, questionId)).limit(1),
-      db.select({ id: practiceSessionAnswersTable.id }).from(practiceSessionAnswersTable).where(eq(practiceSessionAnswersTable.questionId, questionId)).limit(1),
-      db.select({ id: sessionAnswersTable.id }).from(sessionAnswersTable).where(eq(sessionAnswersTable.questionId, questionId)).limit(1),
-      db.select({ id: wrongAnswersTable.id }).from(wrongAnswersTable).where(eq(wrongAnswersTable.questionId, questionId)).limit(1),
-      db.select({ id: bookmarksTable.id }).from(bookmarksTable).where(eq(bookmarksTable.questionId, questionId)).limit(1),
-      db.select({ id: questionCollectionItemsTable.id }).from(questionCollectionItemsTable).where(eq(questionCollectionItemsTable.questionId, questionId)).limit(1)
+    console.log("DELETE ROUTE VERSION 3");
+    console.log(`DELETE request received for question: ${questionId}`);
+    console.log(`Authenticated User: ${req.userId}, Role: ${req.user?.role}`);
+
+    // Query row counts across all 10 referencing tables for logging and checks
+    const [
+      [optionsCount],
+      [bookmarksCount],
+      [wrongAnswersCount],
+      [practiceQuestionsCount],
+      [practiceAnswersCount],
+      [sessionAnswersCount],
+      [examQuestionsCount],
+      [collectionItemsCount],
+      [reportsCount],
+      [currentAffairQuizQuestionsCount]
+    ] = await Promise.all([
+      db.select({ count: count() }).from(questionOptionsTable).where(eq(questionOptionsTable.questionId, questionId)),
+      db.select({ count: count() }).from(bookmarksTable).where(eq(bookmarksTable.questionId, questionId)),
+      db.select({ count: count() }).from(wrongAnswersTable).where(eq(wrongAnswersTable.questionId, questionId)),
+      db.select({ count: count() }).from(practiceSessionQuestionsTable).where(eq(practiceSessionQuestionsTable.questionId, questionId)),
+      db.select({ count: count() }).from(practiceSessionAnswersTable).where(eq(practiceSessionAnswersTable.questionId, questionId)),
+      db.select({ count: count() }).from(sessionAnswersTable).where(eq(sessionAnswersTable.questionId, questionId)),
+      db.select({ count: count() }).from(examQuestionsTable).where(eq(examQuestionsTable.questionId, questionId)),
+      db.select({ count: count() }).from(questionCollectionItemsTable).where(eq(questionCollectionItemsTable.questionId, questionId)),
+      db.select({ count: count() }).from(questionReportsTable).where(eq(questionReportsTable.questionId, questionId)),
+      db.select({ count: count() }).from(currentAffairQuizQuestionsTable).where(eq(currentAffairQuizQuestionsTable.questionId, questionId))
     ]);
 
-    if (
-      practiceQ.length > 0 ||
-      practiceA.length > 0 ||
-      sessionA.length > 0 ||
-      wrongA.length > 0 ||
-      bookmark.length > 0 ||
-      collectionItem.length > 0
-    ) {
-      res.status(409).json({ error: "This question is referenced by practice sessions and cannot be deleted." });
+    const stats = {
+      question_options: Number(optionsCount?.count ?? 0),
+      bookmarks: Number(bookmarksCount?.count ?? 0),
+      wrong_answers: Number(wrongAnswersCount?.count ?? 0),
+      practice_session_questions: Number(practiceQuestionsCount?.count ?? 0),
+      practice_session_answers: Number(practiceAnswersCount?.count ?? 0),
+      session_answers: Number(sessionAnswersCount?.count ?? 0),
+      exam_questions: Number(examQuestionsCount?.count ?? 0),
+      collection_items: Number(collectionItemsCount?.count ?? 0),
+      reports: Number(reportsCount?.count ?? 0),
+      current_affair_quiz_questions: Number(currentAffairQuizQuestionsCount?.count ?? 0)
+    };
+
+    console.log(`question_options: ${stats.question_options}`);
+    console.log(`bookmarks: ${stats.bookmarks}`);
+    console.log(`wrong_answers: ${stats.wrong_answers}`);
+    console.log(`practice_session_questions: ${stats.practice_session_questions}`);
+    console.log(`practice_session_answers: ${stats.practice_session_answers}`);
+    console.log(`session_answers: ${stats.session_answers}`);
+    console.log(`exam_questions: ${stats.exam_questions}`);
+    console.log(`collection_items: ${stats.collection_items}`);
+    console.log(`reports: ${stats.reports}`);
+    console.log(`current_affair_quiz_questions: ${stats.current_affair_quiz_questions}`);
+
+    // Only block deletion if actual student attempt/history exists (session_answers or practice_session_answers)
+    if (stats.session_answers > 0 || stats.practice_session_answers > 0) {
+      res.status(409).json({ error: "This question has been used in student exam/practice history and cannot be deleted." });
       return;
     }
 
-    // Delete child records first to ensure no constraint violations
-    await db.delete(questionOptionsTable).where(eq(questionOptionsTable.questionId, questionId));
-    await db.delete(questionReportsTable).where(eq(questionReportsTable.questionId, questionId));
+    let deletedCount = 0;
+    
+    // Wrap the entire cascade deletion inside a database transaction to preserve integrity
+    try {
+      console.log("Starting transaction...");
+      await db.transaction(async (tx) => {
+        console.log("Deleting reports...");
+        await tx.delete(questionReportsTable).where(eq(questionReportsTable.questionId, questionId));
 
-    // Delete the main question record
-    const result = await db.delete(questionsTable).where(eq(questionsTable.id, questionId)).returning();
+        console.log("Deleting bookmarks...");
+        await tx.delete(bookmarksTable).where(eq(bookmarksTable.questionId, questionId));
 
-    if (result.length === 0) {
+        console.log("Deleting wrong answers...");
+        await tx.delete(wrongAnswersTable).where(eq(wrongAnswersTable.questionId, questionId));
+
+        console.log("Deleting collection items...");
+        await tx.delete(questionCollectionItemsTable).where(eq(questionCollectionItemsTable.questionId, questionId));
+
+        console.log("Deleting exam questions...");
+        await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.questionId, questionId));
+
+        console.log("Deleting current affair quiz questions...");
+        await tx.delete(currentAffairQuizQuestionsTable).where(eq(currentAffairQuizQuestionsTable.questionId, questionId));
+
+        console.log("Deleting practice session questions...");
+        await tx.delete(practiceSessionQuestionsTable).where(eq(practiceSessionQuestionsTable.questionId, questionId));
+
+        console.log("Deleting options...");
+        await tx.delete(questionOptionsTable).where(eq(questionOptionsTable.questionId, questionId));
+
+        console.log("Deleting question...");
+        const result = await tx.delete(questionsTable).where(eq(questionsTable.id, questionId)).returning();
+        deletedCount = result.length;
+      });
+      console.log("Transaction committed.");
+    } catch (txError) {
+      console.error("Transaction rolled back.");
+      console.error("Reason:", txError);
+      throw txError;
+    }
+
+    if (deletedCount === 0) {
       res.status(404).json({ error: "Question not found" });
       return;
     }
 
-    res.json({ message: "Question deleted" });
+    res.status(200).json({ success: true });
   } catch (error) {
     console.error("Error deleting question:", error);
     res.status(500).json({ error: error instanceof Error ? error.message : "Internal Server Error" });

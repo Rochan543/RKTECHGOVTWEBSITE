@@ -121,6 +121,9 @@ export default function Bookmarks() {
       customFetch(`/api/v1/bookmarks/${questionId}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['practice-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['practice-session'] });
+      queryClient.invalidateQueries({ queryKey: ['adaptive'] });
       toast({ title: 'Bookmark removed' });
     },
   });

@@ -59,6 +59,7 @@ interface PracticeSessionResponse {
     totalQuestions: number;
     currentQuestionIndex: number;
     startedAt: string;
+    durationSeconds?: number;
   };
   questions: Question[];
 }
@@ -74,6 +75,7 @@ export default function PracticeSession() {
   // Local state
   const [currentIndex, setCurrentIndex] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [selectedOptionId, setSelectedOptionId] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -94,20 +96,53 @@ export default function PracticeSession() {
   const questions = data?.questions ?? [];
   const currentQ = questions[currentIndex];
 
-  // Sync elapsed timer
+  const completePracticeRef = useRef<() => void>(() => {});
+
+  // Sync elapsed or countdown timer
   useEffect(() => {
     if (!session || session.status !== 'in_progress') return;
 
-    // Initialize elapsed time
     const started = new Date(session.startedAt).getTime();
-    setElapsedTime(Math.floor((Date.now() - started) / 1000));
 
-    const interval = setInterval(() => {
+    if (session.mode === 'timed') {
+      const duration = session.durationSeconds || (session.totalQuestions * 90);
+      
+      const updateTimer = () => {
+        const elapsed = Math.floor((Date.now() - started) / 1000);
+        const remaining = Math.max(0, duration - elapsed);
+        setTimeLeft(remaining);
+        
+        if (remaining <= 0) {
+          toast({ title: 'Time is up!', description: 'Submitting your practice session...', variant: 'default' });
+          completePracticeRef.current();
+        }
+      };
+
+      updateTimer();
+      const interval = setInterval(updateTimer, 1000);
+      return () => clearInterval(interval);
+    } else {
+      // Untimed mode: elapsed time counts up
       setElapsedTime(Math.floor((Date.now() - started) / 1000));
-    }, 1000);
 
-    return () => clearInterval(interval);
+      const interval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - started) / 1000));
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
   }, [session]);
+
+  // Sync initial question index from session
+  const hasSyncedInitialIndexRef = useRef(false);
+  useEffect(() => {
+    if (session && !hasSyncedInitialIndexRef.current) {
+      if (session.currentQuestionIndex >= 0 && session.currentQuestionIndex < questions.length) {
+        setCurrentIndex(session.currentQuestionIndex);
+      }
+      hasSyncedInitialIndexRef.current = true;
+    }
+  }, [session, questions.length]);
 
   // Sync state when current question changes
   useEffect(() => {
@@ -168,6 +203,9 @@ export default function PracticeSession() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['practice-session', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+      queryClient.invalidateQueries({ queryKey: ['practice-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['adaptive'] });
       toast({ title: currentQ?.isBookmarked ? 'Bookmark removed' : 'Question bookmarked' });
     },
   });
@@ -260,6 +298,10 @@ export default function PracticeSession() {
     completeSessionMutation.mutate();
   };
 
+  useEffect(() => {
+    completePracticeRef.current = handleCompletePractice;
+  }, [handleCompletePractice]);
+
   const handleReportQuestion = () => {
     if (!reportReason.trim() || !currentQ) return;
     reportMutation.mutate({
@@ -301,10 +343,12 @@ export default function PracticeSession() {
           </span>
         </div>
 
-        {/* Time elapsed */}
+        {/* Time elapsed / Countdown */}
         <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 px-3.5 py-1.5 rounded-full border">
           <Clock className="h-4 w-4 text-indigo-500" />
-          <span className="font-mono text-sm font-bold">{formatTime(elapsedTime)}</span>
+          <span className="font-mono text-sm font-bold">
+            {session.mode === 'timed' ? formatTime(timeLeft ?? 0) : formatTime(elapsedTime)}
+          </span>
         </div>
 
         {/* Action button */}
@@ -457,6 +501,28 @@ export default function PracticeSession() {
                     >
                       Check Answer
                     </Button>
+                  </>
+                ) : session.mode === 'timed' ? (
+                  <>
+                    <Button variant="outline" onClick={handleSkip} className="h-10 px-4 rounded-xl text-xs font-bold mr-2">
+                      Skip Question
+                    </Button>
+                    {selectedOptionId !== null && selectedOptionId !== currentQ.selectedOptionId ? (
+                      <Button
+                        onClick={handleSaveAnswer}
+                        className="bg-indigo-600 text-white hover:bg-indigo-700 font-bold h-10 px-5 rounded-xl text-xs flex items-center gap-1"
+                      >
+                        {currentIndex === questions.length - 1 ? 'Save Answer' : 'Save & Next'} <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleNext}
+                        disabled={currentIndex === questions.length - 1}
+                        className="bg-indigo-600 text-white hover:bg-indigo-700 font-bold h-10 px-5 rounded-xl text-xs flex items-center gap-1"
+                      >
+                        Next Question <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <Button

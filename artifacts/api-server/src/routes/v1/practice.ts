@@ -61,6 +61,21 @@ const UpdatePracticeSettingsBody = z.object({
   estimatedTimeMinutes: z.number().int().positive(),
 });
 
+
+async function getSessionDurationSeconds(collectionId: number | null, totalQuestions: number): Promise<number> {
+  let durationSeconds = totalQuestions * 90; // Default: 90s per question
+  if (collectionId) {
+    const [pc] = await db
+      .select({ estimatedTimeMinutes: practiceCollectionsTable.estimatedTimeMinutes })
+      .from(practiceCollectionsTable)
+      .where(eq(practiceCollectionsTable.collectionId, collectionId));
+    if (pc?.estimatedTimeMinutes) {
+      durationSeconds = pc.estimatedTimeMinutes * 60;
+    }
+  }
+  return durationSeconds;
+}
+
 // Helper: sync wrong answers from exams to wrong_answers table
 async function syncWrongAnswers(userId: number): Promise<void> {
   try {
@@ -419,8 +434,12 @@ router.post("/v1/practice/sessions", requireAuth, async (req: AuthRequest, res):
       .where(eq(practiceSessionQuestionsTable.sessionId, existingSession.id))
       .orderBy(asc(practiceSessionQuestionsTable.displayOrder));
 
+    const durationSeconds = await getSessionDurationSeconds(existingSession.collectionId, existingSession.totalQuestions);
     res.json({
-      session: existingSession,
+      session: {
+        ...existingSession,
+        durationSeconds,
+      },
       questionIds: sessionQuestions.map((sq) => sq.questionId),
       message: "Resumed existing practice session",
     });
@@ -553,8 +572,12 @@ router.post("/v1/practice/sessions", requireAuth, async (req: AuthRequest, res):
 
   await db.insert(practiceSessionAnswersTable).values(placeholders);
 
+  const durationSeconds = await getSessionDurationSeconds(session.collectionId, session.totalQuestions);
   res.status(201).json({
-    session,
+    session: {
+      ...session,
+      durationSeconds,
+    },
     questionIds,
   });
 });
@@ -669,8 +692,12 @@ router.get("/v1/practice/sessions/:id", requireAuth, async (req: AuthRequest, re
     };
   });
 
+  const durationSeconds = await getSessionDurationSeconds(session.collectionId, session.totalQuestions);
   res.json({
-    session,
+    session: {
+      ...session,
+      durationSeconds,
+    },
     questions: questionsResult,
     questionIds,
   });

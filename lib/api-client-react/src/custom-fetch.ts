@@ -16,6 +16,11 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 // ---------------------------------------------------------------------------
 
 const getInitialBaseUrl = (): string => {
+  // In browser environments, use relative paths so requests go through the
+  // Vite dev-server proxy (or the same origin in production). An absolute
+  // localhost/remote URL would bypass the proxy and fail on cross-origin cookie rules.
+  if (typeof window !== "undefined") return "";
+
   if (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_API_URL) {
     let url = (import.meta as any).env.VITE_API_URL;
     url = url.replace(/\/+$/, "");
@@ -24,10 +29,6 @@ const getInitialBaseUrl = (): string => {
     }
     return url;
   }
-  // In browser environments, use relative paths so requests go through the
-  // Vite dev-server proxy (or the same origin in production). An absolute
-  // localhost URL would bypass the proxy and fail on non-local deployments.
-  if (typeof window !== "undefined") return "";
   return "http://localhost:8080";
 };
 
