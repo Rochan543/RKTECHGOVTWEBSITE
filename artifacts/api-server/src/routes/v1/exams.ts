@@ -116,7 +116,7 @@ router.get("/v1/exams", optionalAuth, async (req: AuthRequest, res): Promise<voi
         .where(inArray(examQuestionsTable.examId, examIds))
         .groupBy(examQuestionsTable.examId)
     : [];
-  const qCountMap = new Map(qCounts.map(q => [q.examId, q.count]));
+  const qCountMap = new Map(qCounts.map(q => [q.examId, Number(q.count)]));
 
   const aCounts = examIds.length > 0
     ? await db.select({ examId: testSessionsTable.examId, count: count() })
@@ -220,7 +220,7 @@ router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise
         .where(inArray(examQuestionsTable.sectionId, sectionIds))
         .groupBy(examQuestionsTable.sectionId)
     : [];
-  const sqCountMap = new Map(sqCounts.map(s => [s.sectionId, s.count]));
+  const sqCountMap = new Map(sqCounts.map(s => [s.sectionId, Number(s.count)]));
 
   const sectionsWithCount = sections.map((sec) => {
     return {
@@ -246,7 +246,7 @@ router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise
     status: exam.status,
     durationMinutes: exam.durationMinutes,
     totalMarks: exam.totalMarks,
-    totalQuestions: qCount?.count ?? 0,
+    totalQuestions: Number(qCount?.count ?? 0),
     positiveMarks: exam.positiveMarks,
     negativeMarks: exam.negativeMarks,
     categoryId: exam.categoryId ?? null,
@@ -343,7 +343,7 @@ router.put("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
   }
 
   const [qCount] = await db.select({ count: count() }).from(examQuestionsTable).where(eq(examQuestionsTable.examId, exam.id));
-  res.json({ ...exam, totalQuestions: qCount?.count ?? 0, attemptCount: 0, averageScore: null, categoryName: null });
+  res.json({ ...exam, totalQuestions: Number(qCount?.count ?? 0), attemptCount: 0, averageScore: null, categoryName: null });
 });
 
 router.delete("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
@@ -441,22 +441,46 @@ router.post("/v1/exams/:id/questions", requireAdmin, async (req, res): Promise<v
     return;
   }
 
-  await db.transaction(async (tx) => {
-    await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.examId, examId));
-    if (questions.length > 0) {
-      await tx.insert(examQuestionsTable).values(
-        questions.map((q: any, idx: number) => ({
-          examId,
-          sectionId: q.sectionId ? parseInt(q.sectionId, 10) : null,
-          questionId: parseInt(q.questionId, 10),
-          order: q.order || (idx + 1),
-        }))
-      );
+  try {
+    const seenQuestionIds = new Set<number>();
+    const values: { examId: number; sectionId: number | null; questionId: number; order: number }[] = [];
+
+    for (let idx = 0; idx < questions.length; idx++) {
+      const q = questions[idx];
+      const questionIdParsed = parseInt(q.questionId, 10);
+      if (isNaN(questionIdParsed)) {
+        continue;
+      }
+      if (seenQuestionIds.has(questionIdParsed)) {
+        continue;
+      }
+      seenQuestionIds.add(questionIdParsed);
+
+      const sectionIdParsed = q.sectionId ? parseInt(q.sectionId, 10) : null;
+
+      values.push({
+        examId,
+        sectionId: isNaN(sectionIdParsed as number) ? null : sectionIdParsed,
+        questionId: questionIdParsed,
+        order: q.order || (values.length + 1),
+      });
     }
-  });
+
+    await db.transaction(async (tx) => {
+      await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.examId, examId));
+      if (values.length > 0) {
+        await tx.insert(examQuestionsTable).values(values);
+      }
+    });
+  } catch (err: any) {
+    logger.error(err, "Error saving exam questions");
+    res.status(500).json({ error: "Internal Server Error" });
+    return;
+  }
 
   res.json({ success: true, count: questions.length });
 });
+
 
 // ─── Get Exam Collections ──────────────────────────────────────────────────
 router.get("/v1/exams/:id/collections", requireAdmin, async (req, res): Promise<void> => {
@@ -597,12 +621,15 @@ router.post("/v1/exams/:id/collections", requireAdmin, async (req, res): Promise
       );
     }
 
-    // Clear existing exam questions
-    await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.examId, id));
+    // Only sync exam questions if collections are specified or questions are explicitly provided
+    if (collectionIds.length > 0 || questions !== undefined) {
+      // Clear existing exam questions
+      await tx.delete(examQuestionsTable).where(eq(examQuestionsTable.examId, id));
 
-    // Insert new questions
-    if (valuesToInsert.length > 0) {
-      await tx.insert(examQuestionsTable).values(valuesToInsert);
+      // Insert new questions
+      if (valuesToInsert.length > 0) {
+        await tx.insert(examQuestionsTable).values(valuesToInsert);
+      }
     }
   });
 

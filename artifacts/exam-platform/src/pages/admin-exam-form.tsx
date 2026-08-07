@@ -372,7 +372,7 @@ export default function AdminExamForm() {
       toast({ title: 'Questions saved successfully' });
       setSelectorOpen(false);
 
-      queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+      queryClient.invalidateQueries({ queryKey: getListExamsQueryKey() });
       queryClient.invalidateQueries({ queryKey: ['exam', examId] });
       queryClient.invalidateQueries({ queryKey: ['/api/v1/admin/stats'] });
     } catch (err: any) {
@@ -547,7 +547,7 @@ export default function AdminExamForm() {
               })
               .then(() => {
                 toast({ title: 'Exam updated successfully' });
-                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey() });
                 navigate('/admin/exams');
               })
               .catch(err => toast({ title: 'Failed to save collections questions', description: String(err.message), variant: 'destructive' }));
@@ -560,7 +560,7 @@ export default function AdminExamForm() {
               })
               .then(() => {
                 toast({ title: 'Exam updated successfully' });
-                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey() });
                 navigate('/admin/exams');
               })
               .catch(err => console.error(err));
@@ -592,13 +592,13 @@ export default function AdminExamForm() {
               })
               .then(() => {
                 toast({ title: 'Exam created successfully' });
-                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+                queryClient.invalidateQueries({ queryKey: getListExamsQueryKey() });
                 navigate('/admin/exams');
               })
               .catch(err => toast({ title: 'Failed to save collections questions', description: String(err.message), variant: 'destructive' }));
             } else {
               toast({ title: 'Exam created successfully' });
-              queryClient.invalidateQueries({ queryKey: getListExamsQueryKey({}) });
+              queryClient.invalidateQueries({ queryKey: getListExamsQueryKey() });
               navigate('/admin/exams');
             }
           },
