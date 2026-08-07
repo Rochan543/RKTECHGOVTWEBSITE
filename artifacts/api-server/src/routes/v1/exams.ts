@@ -57,6 +57,10 @@ async function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction
   next();
 }
 
+router.get("/v1/time", (_req, res): void => {
+  res.json({ time: new Date().toISOString() });
+});
+
 router.get("/v1/exams", optionalAuth, async (req: AuthRequest, res): Promise<void> => {
   const params = ListExamsQueryParams.safeParse(req.query);
   if (!params.success) {
@@ -96,6 +100,9 @@ router.get("/v1/exams", optionalAuth, async (req: AuthRequest, res): Promise<voi
     categoryId: examsTable.categoryId,
     categoryName: examCategoriesTable.name,
     createdAt: examsTable.createdAt,
+    scheduledAt: examsTable.scheduledAt,
+    endsAt: examsTable.endsAt,
+    timezone: examsTable.timezone,
   })
     .from(examsTable)
     .leftJoin(examCategoriesTable, eq(examsTable.categoryId, examCategoriesTable.id))
@@ -142,6 +149,9 @@ router.get("/v1/exams", optionalAuth, async (req: AuthRequest, res): Promise<voi
     attemptCount: aCountMap.get(exam.id) ?? 0,
     averageScore: null,
     createdAt: exam.createdAt,
+    scheduledAt: exam.scheduledAt ? exam.scheduledAt.toISOString() : null,
+    endsAt: exam.endsAt ? exam.endsAt.toISOString() : null,
+    timezone: exam.timezone ?? null,
   }));
 
   res.json({ data, total, page, limit });
@@ -257,6 +267,9 @@ router.get("/v1/exams/:id", optionalAuth, async (req: AuthRequest, res): Promise
     questionTimerSeconds: exam.questionTimerSeconds,
     autoSubmit: exam.autoSubmit,
     autoSave: exam.autoSave,
+    scheduledAt: exam.scheduledAt ? exam.scheduledAt.toISOString() : null,
+    endsAt: exam.endsAt ? exam.endsAt.toISOString() : null,
+    timezone: exam.timezone ?? null,
     createdAt: exam.createdAt,
   });
 });
@@ -286,7 +299,7 @@ router.put("/v1/exams/:id", requireAdmin, async (req, res): Promise<void> => {
   if (parsed.data.type != null) updateData.type = parsed.data.type;
   if (parsed.data.scheduledAt !== undefined) updateData.scheduledAt = parsed.data.scheduledAt ? new Date(parsed.data.scheduledAt) : null;
   if (parsed.data.endsAt !== undefined) updateData.endsAt = parsed.data.endsAt ? new Date(parsed.data.endsAt) : null;
-  if (parsed.data.timezone != null) updateData.timezone = parsed.data.timezone;
+  if (parsed.data.timezone !== undefined) updateData.timezone = parsed.data.timezone;
   if (questionTimerSeconds !== undefined) updateData.questionTimerSeconds = questionTimerSeconds ? parseInt(questionTimerSeconds) : null;
   if (autoSubmit !== undefined) updateData.autoSubmit = autoSubmit !== false;
   if (autoSave !== undefined) updateData.autoSave = autoSave !== false;

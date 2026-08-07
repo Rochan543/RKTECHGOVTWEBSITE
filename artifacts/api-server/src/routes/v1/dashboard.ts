@@ -51,6 +51,9 @@ router.get("/v1/dashboard/upcoming-tests", requireAuth, async (_req: AuthRequest
     title: examsTable.title,
     type: examsTable.type,
     durationMinutes: examsTable.durationMinutes,
+    scheduledAt: examsTable.scheduledAt,
+    endsAt: examsTable.endsAt,
+    timezone: examsTable.timezone,
   })
     .from(examsTable)
     .where(eq(examsTable.status, "published"))
@@ -71,7 +74,9 @@ router.get("/v1/dashboard/upcoming-tests", requireAuth, async (_req: AuthRequest
       id: exam.id,
       title: exam.title,
       type: exam.type,
-      scheduledAt: null,
+      scheduledAt: exam.scheduledAt ? exam.scheduledAt.toISOString() : null,
+      endsAt: exam.endsAt ? exam.endsAt.toISOString() : null,
+      timezone: exam.timezone ?? null,
       durationMinutes: exam.durationMinutes,
       questionCount: qCountMap.get(exam.id) ?? 0,
       categoryName: null,

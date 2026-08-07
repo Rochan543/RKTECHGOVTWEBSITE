@@ -38,6 +38,34 @@ router.post("/v1/sessions", requireAuth, async (req: AuthRequest, res): Promise<
     return;
   }
 
+  const now = new Date();
+  if (exam.scheduledAt && now < exam.scheduledAt) {
+    res.status(400).json({ error: "Exam has not started yet. Not Yet Available." });
+    return;
+  }
+  if (exam.endsAt && now > exam.endsAt) {
+    res.status(400).json({ error: "Exam has already closed." });
+    return;
+  }
+
+  // Check for completed/submitted sessions for Main and Weekly exams
+  if (exam.type === "full_mock" || exam.type === "weekly_quiz") {
+    const completed = await db.select().from(testSessionsTable)
+      .where(and(
+        eq(testSessionsTable.userId, userId),
+        eq(testSessionsTable.examId, examId),
+        inArray(testSessionsTable.status, ["completed", "submitted", "auto_submitted", "finished"] as any[])
+      ));
+    if (completed.length > 0) {
+      res.status(409).json({
+        success: false,
+        code: "EXAM_ALREADY_ATTEMPTED",
+        message: "You have already attempted this exam."
+      });
+      return;
+    }
+  }
+
   // Check for in-progress session
   const existing = await db.select().from(testSessionsTable)
     .where(and(eq(testSessionsTable.userId, userId), eq(testSessionsTable.examId, examId), eq(testSessionsTable.status, "in_progress")));
@@ -158,13 +186,25 @@ router.patch("/v1/sessions/:id/answer", requireAuth, async (req: AuthRequest, re
 
   const userId = req.userId!;
   const sessionId = params.data.id;
-  const [rawSession] = await db.select({ userId: testSessionsTable.userId }).from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
-  if (!rawSession) {
+  const [session] = await db.select().from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
+  if (!session) {
     res.status(404).json({ error: "Session not found" });
     return;
   }
-  if (rawSession.userId !== userId) {
+  if (session.userId !== userId) {
     res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  if (session.status !== "in_progress" && session.status !== "auto_submitted") {
+    res.status(400).json({ error: "Session is not active" });
+    return;
+  }
+
+  const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
+  const now = new Date();
+  if (exam && exam.endsAt && now > exam.endsAt) {
+    await performSessionSubmission(session.id, session.userId, exam);
+    res.status(400).json({ error: "Exam has already closed. Answers are locked." });
     return;
   }
 
@@ -192,32 +232,7 @@ router.patch("/v1/sessions/:id/answer", requireAuth, async (req: AuthRequest, re
   res.json({ message: "Answer saved" });
 });
 
-router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res): Promise<void> => {
-  const params = SubmitSessionParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const sessionId = params.data.id;
-  const userId = req.userId!;
-
-  const [session] = await db.select().from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
-  if (!session) {
-    res.status(404).json({ error: "Session not found" });
-    return;
-  }
-  if (session.userId !== userId) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-  // Allow auto_submitted as well — violations route sets that status before the
-  // frontend calls /submit to complete scoring. Any other terminal state is a no-op.
-  if (session.status !== "in_progress" && session.status !== "auto_submitted") {
-    res.status(400).json({ error: "Session already submitted" });
-    return;
-  }
-
-  const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
+async function performSessionSubmission(sessionId: number, userId: number, exam: any) {
   const answers = await db.select().from(sessionAnswersTable).where(eq(sessionAnswersTable.sessionId, sessionId));
 
   let score = 0;
@@ -270,7 +285,7 @@ router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res
   const [result] = await db.insert(resultsTable).values({
     sessionId,
     userId,
-    examId: session.examId,
+    examId: exam.id,
     score: Math.max(0, score),
     totalMarks,
     correct,
@@ -281,6 +296,35 @@ router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res
     rank: null,
     percentile: null,
   }).returning();
+
+  return result;
+}
+
+router.post("/v1/sessions/:id/submit", requireAuth, async (req: AuthRequest, res): Promise<void> => {
+  const params = SubmitSessionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const sessionId = params.data.id;
+  const userId = req.userId!;
+
+  const [session] = await db.select().from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
+  if (!session) {
+    res.status(404).json({ error: "Session not found" });
+    return;
+  }
+  if (session.userId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  if (session.status !== "in_progress" && session.status !== "auto_submitted") {
+    res.status(400).json({ error: "Session already submitted" });
+    return;
+  }
+
+  const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
+  const result = await performSessionSubmission(sessionId, userId, exam);
 
   res.json({
     id: result.id,
@@ -303,8 +347,19 @@ async function buildSessionDetail(sessionId: number) {
   const [session] = await db.select().from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
   if (!session) return null;
 
-  const [exam, sections, examQs, answers] = await Promise.all([
-    db.select().from(examsTable).where(eq(examsTable.id, session.examId)).then(r => r[0]),
+  const [exam] = await db.select().from(examsTable).where(eq(examsTable.id, session.examId));
+  if (!exam) return null;
+
+  const now = new Date();
+  if (exam.endsAt && now > exam.endsAt && (session.status === "in_progress" || session.status === "auto_submitted")) {
+    await performSessionSubmission(session.id, session.userId, exam);
+    // Reload updated status
+    const [updatedSession] = await db.select().from(testSessionsTable).where(eq(testSessionsTable.id, sessionId));
+    session.status = updatedSession.status;
+    session.submittedAt = updatedSession.submittedAt;
+  }
+
+  const [sections, examQs, answers] = await Promise.all([
     db.select().from(examSectionsTable).where(eq(examSectionsTable.examId, session.examId)),
     db.select().from(examQuestionsTable).where(eq(examQuestionsTable.examId, session.examId)),
     db.select().from(sessionAnswersTable).where(eq(sessionAnswersTable.sessionId, sessionId)),
@@ -375,6 +430,7 @@ async function buildSessionDetail(sessionId: number) {
     questionTimerSeconds: exam?.questionTimerSeconds ?? null,
     autoSubmit: exam?.autoSubmit !== false,
     autoSave: exam?.autoSave !== false,
+    endsAt: exam?.endsAt ? exam.endsAt.toISOString() : null,
   };
 }
 

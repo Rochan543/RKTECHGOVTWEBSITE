@@ -16,7 +16,8 @@ import {
   useGetGoals,
   getGetGoalsQueryKey,
   useGetAiInsights,
-  getGetAiInsightsQueryKey
+  getGetAiInsightsQueryKey,
+  customFetch
 } from '@workspace/api-client-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -24,14 +25,18 @@ import { Trophy, Target, Clock, CheckCircle2, AlertCircle, ArrowRight, Flame, Aw
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useServerTime, useSyncedNow, formatCountdown, formatRemainingTime } from '@/hooks/use-server-time';
 
 export default function Dashboard() {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const { data: serverTime } = useServerTime();
+  const now = useSyncedNow(serverTime);
 
   useEffect(() => {
     setMounted(true);
@@ -65,6 +70,11 @@ export default function Dashboard() {
     query: { queryKey: getGetAiInsightsQueryKey() }
   });
 
+  const { data: adaptiveDashboard } = useQuery<any>({
+    queryKey: ['adaptive', 'dashboard'],
+    queryFn: () => customFetch('/api/v1/adaptive/dashboard'),
+  });
+
   // Claim Daily login reward mutation
   const claimRewardMutation = useClaimLoginReward({
     mutation: {
@@ -90,6 +100,58 @@ export default function Dashboard() {
 
   const handleClaimReward = () => {
     claimRewardMutation.mutate();
+  };
+
+  const handleMissionClick = (missionType: string) => {
+    switch (missionType) {
+      case 'solve_questions':
+        setLocation('/practice');
+        break;
+      case 'read_ca':
+        setLocation('/current-affairs');
+        break;
+      case 'complete_revision':
+        setLocation('/adaptive?tab=revision');
+        break;
+      case 'finish_study_task':
+        setLocation('/study-planner');
+        break;
+      case 'take_mock':
+        setLocation('/exams');
+        break;
+      case 'practice_weak': {
+        if (!adaptiveDashboard) {
+          toast({
+            title: "Loading data...",
+            description: "Please wait a moment while we retrieve your study insights.",
+          });
+          break;
+        }
+        const weakTopics = adaptiveDashboard?.weakTopics || [];
+        if (weakTopics.length > 0) {
+          const weakestTopic = weakTopics[0];
+          if (weakestTopic && weakestTopic.topicId) {
+            setLocation(`/practice/setup?type=topic&topicId=${weakestTopic.topicId}`);
+          } else {
+            toast({
+              title: "No Weak Topics Detected",
+              description: "No weak topics detected! Keep up the high accuracy.",
+            });
+          }
+        } else {
+          toast({
+            title: "No Weak Topics Detected",
+            description: "No weak topics detected! Keep up the high accuracy.",
+          });
+        }
+        break;
+      }
+      case 'complete_quiz':
+        setLocation('/current-affairs?tab=quizzes');
+        break;
+      default:
+        break;
+    }
   };
 
   const xpProgress = (profile && profile.xp !== undefined) ? (profile.xp % 500) : 0;
@@ -248,10 +310,15 @@ export default function Dashboard() {
                 {missionData.missions.map((m: any) => (
                   <div 
                     key={m.id} 
+                    onClick={() => {
+                      if (!m.completed) {
+                        handleMissionClick(m.missionType);
+                      }
+                    }}
                     className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-300 ${
                       m.completed 
                         ? "bg-slate-50 dark:bg-slate-900/30 border-slate-200/40 text-slate-400 line-through dark:text-slate-500" 
-                        : "bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 border-slate-200/60 dark:border-slate-800"
+                        : "bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 border-slate-200/60 dark:border-slate-800 cursor-pointer"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -405,23 +472,96 @@ export default function Dashboard() {
                </div>
             ) : upcoming && upcoming.length > 0 ? (
               <div className="space-y-3">
-                {upcoming.map((test) => (
-                  <div key={test.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-card hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all duration-300">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-bold text-xs leading-tight text-foreground line-clamp-1">{test.title}</h4>
-                      <Badge variant="secondary" className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 font-bold rounded-lg whitespace-nowrap">
-                        {test.type.replace('_', ' ')}
-                      </Badge>
+                {upcoming.map((test) => {
+                  const hasSchedule = test.scheduledAt !== null && test.scheduledAt !== undefined;
+                  const startMs = hasSchedule ? new Date(test.scheduledAt!).getTime() : 0;
+                  const endMs = hasSchedule && test.endsAt ? new Date(test.endsAt).getTime() : Infinity;
+
+                  const isUpcoming = hasSchedule && now < startMs;
+                  const isClosed = hasSchedule && now > endMs;
+                  const isLive = !hasSchedule || (now >= startMs && now <= endMs);
+
+                  let countdown = null;
+                  let remainingSeconds = 0;
+                  if (isUpcoming) {
+                    countdown = formatCountdown(startMs - now);
+                  } else if (isLive && hasSchedule) {
+                    remainingSeconds = Math.max(0, Math.floor((endMs - now) / 1000));
+                  }
+
+                  return (
+                    <div key={test.id} className={`p-4 rounded-xl border ${isUpcoming ? 'border-amber-100 dark:border-amber-950/20 bg-amber-50/5' : isLive && hasSchedule ? 'border-emerald-100 dark:border-emerald-950/20 bg-emerald-50/5' : 'border-slate-100 dark:border-slate-800 bg-card'} hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all duration-300`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-xs leading-tight text-foreground line-clamp-1">{test.title}</h4>
+                        <div className="flex gap-1 items-center">
+                          <Badge variant="outline" className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 font-bold rounded-lg whitespace-nowrap">
+                            {test.type.replace('_', ' ')}
+                          </Badge>
+                          {isUpcoming && (
+                            <Badge className="bg-amber-500 text-white text-[8px] uppercase font-bold rounded-lg">
+                              Scheduled
+                            </Badge>
+                          )}
+                          {isLive && hasSchedule && (
+                            <Badge className="bg-emerald-500 text-white text-[8px] uppercase font-bold rounded-lg animate-pulse">
+                              Exam Live
+                            </Badge>
+                          )}
+                          {isClosed && (
+                            <Badge variant="outline" className="bg-slate-100 text-slate-500 text-[8px] uppercase font-bold rounded-lg">
+                              Closed
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {isUpcoming && countdown && (
+                        <div className="my-3 p-2 bg-amber-500/5 border border-amber-500/10 rounded-lg flex flex-col items-center">
+                          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Starts In</span>
+                          <div className="flex gap-1.5 text-center text-xs font-bold font-mono text-amber-600 dark:text-amber-400">
+                            <span>{countdown.days}d</span>
+                            <span>:</span>
+                            <span>{countdown.hours}h</span>
+                            <span>:</span>
+                            <span>{countdown.minutes}m</span>
+                            <span>:</span>
+                            <span>{countdown.seconds}s</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {isLive && hasSchedule && (
+                        <div className="my-3 p-2 bg-emerald-500/5 border border-emerald-500/10 rounded-lg flex flex-col items-center">
+                          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Remaining Time</span>
+                          <span className="text-xs font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                            {formatRemainingTime(remainingSeconds)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-3 font-medium">
+                        <span className="flex items-center"><Clock className="mr-1 h-3 w-3" /> {test.durationMinutes} mins</span>
+                        <span className="flex items-center"><Target className="mr-1 h-3 w-3" /> {test.questionCount} Qs</span>
+                      </div>
+
+                      {isUpcoming ? (
+                        <Button size="sm" className="w-full h-8 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border-0" disabled>
+                          Not Yet Available
+                        </Button>
+                      ) : isClosed ? (
+                        <Button size="sm" className="w-full h-8 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border-0" disabled>
+                          Exam Closed
+                        </Button>
+                      ) : (
+                        <Button size="sm" className={`w-full h-8 text-xs font-bold ${hasSchedule ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : ''}`} asChild>
+                          <Link href={`/exams/${test.id}`}>
+                            {hasSchedule ? 'Start Exam' : 'Start Details'}
+                          </Link>
+                        </Button>
+                      )}
                     </div>
-                    <div className="flex items-center gap-4 text-[10px] text-muted-foreground mb-3 font-medium">
-                      <span className="flex items-center"><Clock className="mr-1 h-3 w-3" /> {test.durationMinutes} mins</span>
-                      <span className="flex items-center"><Target className="mr-1 h-3 w-3" /> {test.questionCount} Qs</span>
-                    </div>
-                    <Button size="sm" className="w-full h-8 text-xs font-bold" asChild>
-                      <Link href={`/exams/${test.id}`}>Start Details</Link>
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-12 text-center p-4">

@@ -222,6 +222,14 @@ export default function PracticeSession() {
     },
   });
 
+  const handleCompletePractice = () => {
+    completeSessionMutation.mutate();
+  };
+
+  useEffect(() => {
+    completePracticeRef.current = handleCompletePractice;
+  }, [handleCompletePractice]);
+
   if (isLoading || !session) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
@@ -293,14 +301,6 @@ export default function PracticeSession() {
       isBookmarked: currentQ.isBookmarked,
     });
   };
-
-  const handleCompletePractice = () => {
-    completeSessionMutation.mutate();
-  };
-
-  useEffect(() => {
-    completePracticeRef.current = handleCompletePractice;
-  }, [handleCompletePractice]);
 
   const handleReportQuestion = () => {
     if (!reportReason.trim() || !currentQ) return;

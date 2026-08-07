@@ -19,6 +19,7 @@ import ForgotPassword from '@/pages/forgot-password';
 // Pages (Lazy)
 const Dashboard = React.lazy(() => import('@/pages/dashboard'));
 const Exams = React.lazy(() => import('@/pages/exams'));
+const ScheduledExams = React.lazy(() => import('@/pages/scheduled-exams'));
 const ExamDetail = React.lazy(() => import('@/pages/exam-detail'));
 const ExamEngine = React.lazy(() => import('@/pages/exam-engine'));
 const Results = React.lazy(() => import('@/pages/results'));
@@ -162,8 +163,9 @@ function Router() {
 
       {/* Student */}
       <Route path="/dashboard">{() => <DashboardRoute component={Dashboard} />}</Route>
-      <Route path="/exams">{() => <DashboardRoute component={Exams} />}</Route>
+      <Route path="/exams/scheduled">{() => <DashboardRoute component={ScheduledExams} />}</Route>
       <Route path="/exams/:id">{() => <DashboardRoute component={ExamDetail} />}</Route>
+      <Route path="/exams">{() => <DashboardRoute component={Exams} />}</Route>
       <Route path="/results">{() => <DashboardRoute component={Results} />}</Route>
       <Route path="/results/:id">{() => <DashboardRoute component={ResultDetail} />}</Route>
       <Route path="/leaderboard">{() => <DashboardRoute component={Leaderboard} />}</Route>
@@ -229,6 +231,7 @@ function Router() {
 
 export function prefetchRoute(path: string) {
   if (path === '/dashboard') import('@/pages/dashboard');
+  else if (path === '/exams/scheduled') import('@/pages/scheduled-exams');
   else if (path.startsWith('/exams/')) import('@/pages/exam-detail');
   else if (path === '/exams') import('@/pages/exams');
   else if (path.startsWith('/results/')) import('@/pages/result-detail');

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customFetch } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -98,6 +98,27 @@ export default function CurrentAffairsDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['feed', 'quizzes', 'revision', 'monthly'].includes(tab)) {
+        return tab;
+      }
+    }
+    return 'feed';
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['feed', 'quizzes', 'revision', 'monthly'].includes(tab)) {
+        setActiveTab(tab);
+      }
+    }
+  }, [window.location.search]);
 
   // Queries
   const { data: statsData, isLoading: isLoadingStats } = useQuery<HistoryStatsResponse>({
@@ -255,7 +276,7 @@ export default function CurrentAffairsDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Side: Feed, Quizzes, Compilations (8 cols) */}
         <div className="lg:col-span-8 space-y-8">
-          <Tabs defaultValue="feed" className="w-full space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
             <TabsList className="flex overflow-x-auto bg-muted p-1 rounded-xl h-auto flex-wrap">
               <TabsTrigger value="feed" className="rounded-lg py-2 flex items-center gap-1.5 flex-1 md:flex-none">
                 <Newspaper className="h-4 w-4" /> Daily Feed

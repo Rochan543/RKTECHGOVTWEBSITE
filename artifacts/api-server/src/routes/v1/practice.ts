@@ -506,6 +506,7 @@ router.post("/v1/practice/sessions", requireAuth, async (req: AuthRequest, res):
     const qs = await db
       .select({ questionId: bookmarksTable.questionId })
       .from(bookmarksTable)
+      .innerJoin(questionsTable, eq(bookmarksTable.questionId, questionsTable.id))
       .where(eq(bookmarksTable.userId, userId));
     questionIds = qs.map((q) => q.questionId);
   } else if (type === "wrong_answers") {

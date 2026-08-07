@@ -26,6 +26,12 @@ export interface ExamDetail {
   attemptCount?: number;
   /** @nullable */
   averageScore?: number | null;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
   sections: ExamSection[];
   createdAt: Date;
 }

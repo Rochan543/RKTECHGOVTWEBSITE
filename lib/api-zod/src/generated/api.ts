@@ -153,7 +153,9 @@ export const GetUpcomingTestsResponseItem = zod.object({
   "scheduledAt": zod.coerce.date().nullable(),
   "durationMinutes": zod.number(),
   "questionCount": zod.number(),
-  "categoryName": zod.string().nullish()
+  "categoryName": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "timezone": zod.string().nullish()
 })
 export const GetUpcomingTestsResponse = zod.array(GetUpcomingTestsResponseItem)
 
@@ -252,7 +254,10 @@ export const ListExamsResponse = zod.object({
   "categoryName": zod.string().nullish(),
   "attemptCount": zod.number().optional(),
   "averageScore": zod.number().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "scheduledAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "timezone": zod.string().nullish()
 })),
   "total": zod.number(),
   "page": zod.number(),
@@ -319,6 +324,9 @@ export const GetExamResponse = zod.object({
   "categoryName": zod.string().nullish(),
   "attemptCount": zod.number().optional(),
   "averageScore": zod.number().nullish(),
+  "scheduledAt": zod.string().nullish(),
+  "endsAt": zod.string().nullish(),
+  "timezone": zod.string().nullish(),
   "sections": zod.array(zod.object({
   "id": zod.number(),
   "name": zod.string(),

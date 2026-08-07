@@ -168,7 +168,9 @@ export default function Exams() {
                     <CardFooter className="pt-4 border-t border-border/50">
                       <Button className="w-full font-bold h-9 bg-primary hover:bg-primary/95 text-primary-foreground" asChild>
                         <Link href={`/exams/${exam.id}`}>
-                          {lastAttempt ? 'Retake Exam' : 'View Details'}
+                          {lastAttempt 
+                            ? (exam.type === 'full_mock' || exam.type === 'weekly_quiz' ? 'View Details' : 'Retake Exam') 
+                            : 'View Details'}
                         </Link>
                       </Button>
                     </CardFooter>

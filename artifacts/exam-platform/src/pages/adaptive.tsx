@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customFetch } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -35,7 +35,16 @@ interface StudyPlanResponse {
 }
 
 export default function AdaptiveLearning() {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['dashboard', 'studyplan', 'recommendations', 'revision', 'weakareas'].includes(tab)) {
+        return tab;
+      }
+    }
+    return 'dashboard';
+  });
   const [selectedPath, setSelectedPath] = useState<string>('intermediate');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [showReschedule, setShowReschedule] = useState<boolean>(false);
@@ -45,6 +54,16 @@ export default function AdaptiveLearning() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['dashboard', 'studyplan', 'recommendations', 'revision', 'weakareas'].includes(tab)) {
+        setActiveTab(tab);
+      }
+    }
+  }, [window.location.search]);
 
   // Queries
   const { data: dashboardData, isLoading: dashboardLoading } = useQuery<any>({

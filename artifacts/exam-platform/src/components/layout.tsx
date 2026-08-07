@@ -138,6 +138,9 @@ function NavItem({ href, label, icon: Icon, exact = false, badge }: { href: stri
         queryClient.prefetchQuery(getListNotificationsQueryOptions());
       } else if (href === '/exams') {
         queryClient.prefetchQuery(getListExamsQueryOptions({ limit: 100 }));
+      } else if (href === '/exams/scheduled') {
+        queryClient.prefetchQuery(getListExamsQueryOptions({ limit: 100 }));
+        queryClient.prefetchQuery(getListResultsQueryOptions({ limit: 100 }));
       } else if (href === '/practice') {
         queryClient.prefetchQuery(getListExamsQueryOptions({ limit: 100 }));
         queryClient.prefetchQuery(getListResultsQueryOptions({ limit: 100 }));
@@ -238,6 +241,7 @@ function StudentNav() {
         <SidebarMenu>
           <NavItem href="/practice" label="Practice Hub" icon={Target} />
           <NavItem href="/exams" label="Test Series" icon={FileText} />
+          <NavItem href="/exams/scheduled" label="Scheduled Exams" icon={CalendarDays} />
           <NavItem href="/adaptive" label="Adaptive Learning" icon={Sparkles} />
         </SidebarMenu>
       </SidebarGroup>

@@ -2152,6 +2152,12 @@ components:
           type: number
         averageScore:
           type: ["number", "null"]
+        scheduledAt:
+          type: ["string", "null"]
+        endsAt:
+          type: ["string", "null"]
+        timezone:
+          type: ["string", "null"]
         sections:
           type: array
           items:

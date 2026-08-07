@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { customFetch } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,6 +37,17 @@ export default function PracticeSetup() {
   const [selectedTopicId, setSelectedTopicId] = useState<string>(topicIdParam?.toString() || 'all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [selectedLimit, setSelectedLimit] = useState<string>('20');
+
+  useEffect(() => {
+    if (typeParam === 'topic' && (!topicIdParam || isNaN(topicIdParam))) {
+      toast({
+        title: 'Invalid Topic ID',
+        description: 'A valid topic must be selected to start a topic practice session.',
+        variant: 'destructive',
+      });
+      setLocation('/practice');
+    }
+  }, [typeParam, topicIdParam, setLocation, toast]);
 
   // Fetch subjects and topics for filters
   const { data: subjects } = useQuery<Subject[]>({
@@ -87,10 +98,34 @@ export default function PracticeSetup() {
     };
 
     if (typeParam === 'collection') {
+      if (!collectionIdParam || isNaN(collectionIdParam)) {
+        toast({
+          title: 'Invalid Collection ID',
+          description: 'Cannot start session: collection ID is missing or invalid.',
+          variant: 'destructive',
+        });
+        return;
+      }
       body.collectionId = collectionIdParam;
     } else if (typeParam === 'topic') {
+      if (!topicIdParam || isNaN(topicIdParam)) {
+        toast({
+          title: 'Invalid Topic ID',
+          description: 'Cannot start session: topic ID is missing or invalid.',
+          variant: 'destructive',
+        });
+        return;
+      }
       body.topicId = topicIdParam;
     } else if (typeParam === 'subject') {
+      if (!subjectIdParam || isNaN(subjectIdParam)) {
+        toast({
+          title: 'Invalid Subject ID',
+          description: 'Cannot start session: subject ID is missing or invalid.',
+          variant: 'destructive',
+        });
+        return;
+      }
       body.subjectId = subjectIdParam;
     } else if (typeParam === 'bookmarks') {
       // no extra params needed

@@ -223,6 +223,10 @@ export interface UpcomingTest {
   questionCount: number;
   /** @nullable */
   categoryName?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
 }
 
 export interface ActivityItem {
@@ -309,6 +313,12 @@ export interface Exam {
   /** @nullable */
   averageScore?: number | null;
   createdAt: string;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
 }
 
 export type ExamSectionNavigationRule = typeof ExamSectionNavigationRule[keyof typeof ExamSectionNavigationRule];
@@ -357,6 +367,12 @@ export interface ExamDetail {
   attemptCount?: number;
   /** @nullable */
   averageScore?: number | null;
+  /** @nullable */
+  scheduledAt?: string | null;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  timezone?: string | null;
   sections: ExamSection[];
   createdAt: string;
 }
